@@ -3,8 +3,9 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"gymnote/internal/helper"
 	"strings"
+
+	"gymnote/internal/helper"
 )
 
 const (
