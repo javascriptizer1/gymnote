@@ -30,7 +30,7 @@ func MustLoad() *Config {
 	var cfg Config
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
-		log.Fatal("No loading env variables: %v", err)
+		log.Fatalf("No loading env variables: %v", err)
 	}
 
 	return &cfg

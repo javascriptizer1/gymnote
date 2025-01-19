@@ -12,6 +12,6 @@ type TrainingSession struct {
 	Date          time.Time
 	TotalVolume   float32
 	ExerciseCount uint8
+	Exercises     []SessionExercise
 	Notes         string
-	Exercises     []Exercise
 }

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS exercises (
     name String,
     muscle_group String,
     equipment String,
-    createdAt Date,
+    createdAt DateTime,
 ) ENGINE = MergeTree()
   PRIMARY KEY id
   ORDER BY (id, createdAt);

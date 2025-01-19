@@ -43,7 +43,6 @@ INSERT INTO exercises (id, name, muscle_group, equipment, createdAt) VALUES
     (generateUUIDv4(), 'Разгибание ног в тренажере', 'Ноги', 'Тренажер', now()),
     (generateUUIDv4(), 'Разведение ног в тренажере', 'Ноги', 'Тренажер', now()),
     (generateUUIDv4(), 'Сведение ног в тренажере', 'Ноги', 'Тренажер', now());
-
 -- +goose StatementEnd
 
 -- +goose Down

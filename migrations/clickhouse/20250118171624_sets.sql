@@ -3,16 +3,20 @@
 CREATE TABLE IF NOT EXISTS training_logs (
     id UUID,
     user_id String,
-    session_date Date,
+    session_id UUID,
     exercise_id UUID,
+    session_date Date,
+    exercise_name String,
+    exercise_number UInt8,
     set_number UInt8,
     weight Float32,
     reps UInt8,
     difficulty String,
     notes String,
+    muscle_group String,
 ) ENGINE = MergeTree()
-  PRIMARY KEY id
-  ORDER BY (id, session_date, exercise_id, set_number);
+  PRIMARY KEY (id, session_id, exercise_id, exercise_number, set_number)
+  ORDER BY (id, session_id, exercise_id, exercise_number, set_number);
 -- +goose StatementEnd
 
 -- +goose Down

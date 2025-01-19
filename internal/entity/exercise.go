@@ -12,5 +12,24 @@ type Exercise struct {
 	Name        string
 	MuscleGroup string
 	Equipment   string
-	Sets        []Set
+}
+
+type SessionExercise struct {
+	ID             uuid.UUID
+	Exercise       Exercise
+	ExerciseNumber uint8
+	Sets           []Set
+}
+
+func (se *SessionExercise) SetCount() uint8 {
+	return uint8(len(se.Sets))
+}
+
+func (se *SessionExercise) TotalVolume() float32 {
+	totalVolume := float32(0)
+	for _, set := range se.Sets {
+		totalVolume += set.Weight * float32(set.Reps)
+	}
+
+	return totalVolume
 }

@@ -40,27 +40,29 @@ func (s *service) Process(ctx context.Context, e entity.Event) error {
 	}
 
 	session := entity.TrainingSession{
-		ID:        uuid.New(),
-		UserID:    e.UserID,
-		Date:      time.Now(),
-		Notes:     "",
-		Exercises: make([]entity.Exercise, 0, len(parsedExercises)),
+		ID:            uuid.New(),
+		UserID:        e.UserID,
+		Date:          time.Now(),
+		Notes:         "",
+		ExerciseCount: uint8(len(parsedExercises)),
+		Exercises:     make([]entity.SessionExercise, 0, len(parsedExercises)),
 	}
 
-	for _, exercise := range parsedExercises {
-		sets := make([]entity.Set, 0, len(exercise.Sets))
+	for exsIDX, parsedExercise := range parsedExercises {
+		sets := make([]entity.Set, 0, len(parsedExercise.Sets))
+		totalVolume := float32(0)
 
-		exerciseID, err := s.db.GetExerciseIDByName(ctx, exercise.Name)
+		exercise, err := s.db.GetExerciseByName(ctx, parsedExercise.Name)
 		if err != nil {
-			return fmt.Errorf("failed to get exercise ID for '%s': %w", exercise.Name, err)
+			return fmt.Errorf("failed to get exercise ID for '%s': %w", parsedExercise.Name, err)
 		}
 
-		for setIDX, set := range exercise.Sets {
-			session.TotalVolume += set.Weight * float32(set.Reps)
+		for setIDX, set := range parsedExercise.Sets {
+			totalVolume += set.Weight * float32(set.Reps)
 			sets = append(sets, entity.Set{
 				ID:         uuid.New(),
 				UserID:     e.UserID,
-				ExerciseID: exerciseID,
+				ExerciseID: exercise.ID,
 				SetNumber:  uint8(setIDX + 1),
 				Weight:     set.Weight,
 				Reps:       set.Reps,
@@ -69,10 +71,12 @@ func (s *service) Process(ctx context.Context, e entity.Event) error {
 			})
 		}
 
-		session.ExerciseCount++
-		session.Exercises = append(session.Exercises, entity.Exercise{
-			ID:   exerciseID,
-			Sets: sets,
+		session.TotalVolume += totalVolume
+		session.Exercises = append(session.Exercises, entity.SessionExercise{
+			ID:             uuid.New(),
+			Exercise:       exercise,
+			ExerciseNumber: uint8(exsIDX + 1),
+			Sets:           sets,
 		})
 	}
 
