@@ -2,6 +2,9 @@ include .env
 
 MIGRATIONS_SRC_DIR := migrations/clickhouse
 
+docker-up:
+	docker-compose up -d 
+
 run:
 	@set -a; \
 	source .env; \
