@@ -11,6 +11,7 @@ import (
 type DB interface {
 	Close()
 
+	InsertExercise(ctx context.Context, req entity.Exercise) error
 	GetExerciseByName(ctx context.Context, req string) (entity.Exercise, error)
 	GetExerciseByID(ctx context.Context, req uuid.UUID) (entity.Exercise, error)
 	GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error)

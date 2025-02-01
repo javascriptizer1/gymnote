@@ -65,10 +65,6 @@ func (ts *TrainingSession) ActiveExercise() *SessionExercise {
 	return &ts.exercises[len(ts.exercises)-1]
 }
 
-func (ts *TrainingSession) State() string {
-	return "awaiting_set_input"
-}
-
 func (ts *TrainingSession) CreatedAt() time.Time {
 	return ts.createdAt
 }

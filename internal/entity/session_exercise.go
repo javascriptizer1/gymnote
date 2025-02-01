@@ -27,11 +27,16 @@ func (se *SessionExercise) Sets() []Set {
 	return se.sets
 }
 
-func (se *SessionExercise) ActiveSet() *Set {
+func (se *SessionExercise) LastSet() *Set {
 	if len(se.sets) == 0 {
 		return nil
 	}
+
 	return &se.sets[len(se.sets)-1]
+}
+
+func (ts *SessionExercise) AddSet(set *Set) {
+	ts.sets = append(ts.sets, *set)
 }
 
 func (se *SessionExercise) TotalVolume() float32 {

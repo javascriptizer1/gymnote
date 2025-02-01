@@ -9,12 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
 	"gymnote/internal/config"
-	"gymnote/internal/consumer"
-	"gymnote/internal/entity"
-	"gymnote/internal/event/telegram"
 	"gymnote/internal/handler/tg"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
@@ -24,22 +19,17 @@ import (
 )
 
 type app struct {
+	ctx       context.Context
+	cancelCtx context.CancelFunc
+
 	cfg *config.Config
 
-	bot *tgbotapi.BotAPI
-	api tg.API
-
+	api   tg.API
 	db    repository.DB
 	cache repository.Cache
 
-	fetcher   telegram.Fetcher
-	parser    service.Parser
-	processor tg.TrainingService
-	consumer  consumer.Consumer
-
-	eventChan chan entity.Event
-	ctx       context.Context
-	cancelCtx context.CancelFunc
+	parser  service.Parser
+	service tg.TrainingService
 }
 
 func New() (*app, error) {
@@ -62,7 +52,6 @@ func (a *app) initDeps() error {
 	fns := []func() error{
 		a.initConfig,
 		a.initDB,
-		a.initChan,
 		a.initServices,
 	}
 
@@ -100,28 +89,11 @@ func (a *app) initDB() error {
 	return nil
 }
 
-func (a *app) initChan() error {
-	a.eventChan = make(chan entity.Event, 100)
-	return nil
-}
-
 func (a *app) initServices() error {
-
-	bot, err := tgbotapi.NewBotAPI(a.cfg.Telegram.BotToken)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	bot.Debug = a.cfg.Telegram.Debug
-
-	a.bot = bot
-
-	a.fetcher = telegram.New(a.eventChan, &a.cfg.Telegram)
 	a.parser = parser.New()
-	a.processor = service.New(a.db, a.cache, a.parser)
-	// a.consumer = consumer.New(a.eventChan, a.processor)
+	a.service = service.New(a.db, a.cache, a.parser)
 
-	a.api = *tg.New(a.ctx, a.bot, a.processor)
+	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.service)
 
 	return nil
 }
@@ -136,10 +108,7 @@ func (a *app) shutdown() {
 }
 
 func (a *app) runServer() error {
-	// go a.fetcher.Start(a.ctx)
-	// go a.consumer.Start(a.ctx)
-
-	a.api.Register(a.bot.GetUpdatesChan(tgbotapi.UpdateConfig{}))
+	a.api.Register()
 
 	waitGracefulShutdown(a.cancelCtx, a.cfg.GracefulTimeout)
 

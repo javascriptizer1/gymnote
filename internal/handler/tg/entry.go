@@ -1,7 +1,6 @@
 package tg
 
 import (
-	"fmt"
 	"log"
 	"runtime/debug"
 	"strconv"
@@ -10,14 +9,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func (a *API) Register(updates tgbotapi.UpdatesChannel) {
+func (a *API) Register() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovering from panic: %v\nStack trace: %s", r, debug.Stack())
 		}
 	}()
 
-	for update := range updates {
+	for update := range a.bot.GetUpdatesChan(tgbotapi.UpdateConfig{}) {
 		switch {
 		case update.Message != nil && update.Message.IsCommand():
 			a.handleCommand(update.Message)
@@ -32,47 +31,31 @@ func (a *API) Register(updates tgbotapi.UpdatesChannel) {
 }
 
 func (a *API) handleCommand(message *tgbotapi.Message) {
-	commandHandlers := map[string]func(*tgbotapi.Message){
-		"/start_training": a.StartTrainingHandler,
-	}
-
-	if handler, exists := commandHandlers[message.Text]; exists {
+	if handler, exists := a.commandHandlers[message.Command()]; exists {
 		handler(message)
+	} else {
+		a.UnknownCommandHandler(message)
 	}
 }
 
 func (a *API) handleState(message *tgbotapi.Message) {
 	userID := strconv.FormatInt(message.From.ID, 10)
-	session, err := a.trainingService.GetCurrentSession(a.ctx, userID)
-	if err != nil {
-		msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf("Ошибка: %v", err))
-		a.bot.Send(msg)
-		return
-	}
+	state := a.getUserState(userID)
 
-	switch session.State() {
-	case "awaiting_set_input":
-		a.SetHandler(message)
-	default:
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда.")
-		a.bot.Send(msg)
+	if handler, exists := a.stateHandlers[state]; exists {
+		handler(message)
+	} else {
+		a.UnknownCommandHandler(message)
 	}
 }
 
 func (a *API) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
-	callbackHandlers := map[string]func(*tgbotapi.CallbackQuery){
-		"muscle:":         a.MuscleGroupHandler,
-		"exercise:":       a.ExerciseHandler,
-		"finish_training": a.FinishTrainingHandler,
-	}
-
-	for prefix, handler := range callbackHandlers {
+	for prefix, handler := range a.callbackHandlers {
 		if strings.HasPrefix(callback.Data, prefix) {
 			handler(callback)
 			return
 		}
 	}
 
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Неизвестная команда.")
-	a.bot.Send(msg)
+	a.UnknownCommandHandler(callback.Message)
 }

@@ -9,8 +9,8 @@ import (
 
 func (c *clickHouse) InsertTrainingLogs(ctx context.Context, req entity.TrainingSession) error {
 	batch, err := c.conn.PrepareBatch(ctx, `
-		INSERT INTO training_logs (id, user_id, session_id, exercise_id, session_date, exercise_name, exercise_number, set_number, weight, reps, difficulty, notes, muscle_group)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO training_logs (id, user_id, session_id, exercise_id, session_date, exercise_name, exercise_number, set_number, weight, reps, difficulty, notes, muscle_group, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to prepare batch: %w", err)
@@ -19,7 +19,7 @@ func (c *clickHouse) InsertTrainingLogs(ctx context.Context, req entity.Training
 	for _, exs := range req.Exercises() {
 		for _, log := range exs.Sets() {
 			if err := batch.Append(log.ID(), log.UserID(), req.ID(), log.ExerciseID(), req.Date(), exs.Exercise.Name(), exs.Number(),
-				log.Number(), log.Weight(), log.Reps(), log.Difficulty(), log.Notes(), exs.Exercise.MuscleGroup()); err != nil {
+				log.Number(), log.Weight(), log.Reps(), log.Difficulty(), log.Notes(), exs.Exercise.MuscleGroup(), log.CreatedAt()); err != nil {
 				return fmt.Errorf("failed to append training log: %w", err)
 			}
 		}

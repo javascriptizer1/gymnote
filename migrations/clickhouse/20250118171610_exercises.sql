@@ -5,10 +5,10 @@ CREATE TABLE IF NOT EXISTS exercises (
     name String,
     muscle_group String,
     equipment String,
-    createdAt DateTime,
+    created_at DateTime,
 ) ENGINE = MergeTree()
   PRIMARY KEY id
-  ORDER BY (id, createdAt);
+  ORDER BY (id, created_at);
 -- +goose StatementEnd
 
 -- +goose Down

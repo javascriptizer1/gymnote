@@ -63,6 +63,11 @@ func (s *Set) SetWeight(weight float32) {
 func (s *Set) SetReps(reps uint8) {
 	s.reps = reps
 }
+func (s *Set) SetNotes(notes string) {
+	if notes != "" {
+		s.notes = notes
+	}
+}
 
 func NewSet(opts ...SetOption) *Set {
 	set := &Set{}

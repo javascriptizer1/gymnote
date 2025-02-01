@@ -46,6 +46,22 @@ func NewExercise(opts ...ExerciseOption) *Exercise {
 	return exercise
 }
 
+type ExerciseInitSpecification struct {
+	Name        string
+	MuscleGroup string
+	Equipment   string
+}
+
+func WithExerciseInitSpec(e ExerciseInitSpecification) ExerciseOption {
+	return func(o *Exercise) {
+		o.id = uuid.New()
+		o.createdAt = time.Now()
+		o.name = e.Name
+		o.muscleGroup = e.MuscleGroup
+		o.equipment = e.Equipment
+	}
+}
+
 type ExerciseRestoreSpecification struct {
 	ID          uuid.UUID
 	CreatedAt   time.Time

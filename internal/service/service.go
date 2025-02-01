@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"gymnote/internal/entity"
+	"gymnote/internal/errs"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
 )
@@ -33,7 +34,7 @@ func New(db repository.DB, cache repository.Cache, parser Parser) *service {
 
 func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
 	if e.UserID == "" || e.Text == "" {
-		return errors.New("invalid event data: missing UserID or Text")
+		return errs.ErrInvalidEventData
 	}
 
 	parsedExercises, err := s.parser.ParseExercises(e.Text)
@@ -41,30 +42,21 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
 		return fmt.Errorf("failed to parse exercises: %w", err)
 	}
 
-	session := entity.TrainingSession{
-		// ID:            uuid.New(),
-		// UserID:        e.UserID,
-		// Date:          time.Now(),
-		// Notes:         "",
-		// ExerciseCount: uint8(len(parsedExercises)),
-		// Exercises:     make([]entity.SessionExercise, 0, len(parsedExercises)),
-	}
+	var exercises []entity.SessionExercise
 
-	for _, parsedExercise := range parsedExercises {
+	for exsIDX, parsedExercise := range parsedExercises {
 		sets := make([]entity.Set, 0, len(parsedExercise.Sets))
-		totalVolume := float32(0)
 
-		_, err := s.db.GetExerciseByName(ctx, parsedExercise.Name)
+		exercise, err := s.db.GetExerciseByName(ctx, parsedExercise.Name)
 		if err != nil {
 			return fmt.Errorf("failed to get exercise ID for '%s': %w", parsedExercise.Name, err)
 		}
 
 		for setIDX, set := range parsedExercise.Sets {
-			totalVolume += set.Weight * float32(set.Reps)
 			sets = append(sets, *entity.NewSet(entity.WithSetInitSpec(
 				entity.SetInitSpecification{
-					UserID: e.UserID,
-					// ExerciseID: exercise.ID,
+					ExerciseID: exercise.ID(),
+					UserID:     e.UserID,
 					Number:     uint8(setIDX + 1),
 					Weight:     set.Weight,
 					Reps:       set.Reps,
@@ -74,23 +66,49 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
 			)
 		}
 
-		// session.Exercises = append(session.Exercises, entity.SessionExercise{
-		// 	ID:             uuid.New(),
-		// 	Exercise:       exercise,
-		// 	ExerciseNumber: uint8(exsIDX + 1),
-		// 	Sets:           sets,
-		// })
+		exercises = append(exercises, *entity.NewSessionExercise(&exercise, sets, entity.WithSessionExerciseInitSpec(
+			entity.SessionExerciseInitSpecification{
+				Number: uint8(exsIDX + 1),
+			},
+		)))
 	}
 
-	if err := s.db.InsertTrainingSession(ctx, session); err != nil {
+	session := entity.NewTrainingSession(entity.WithTrainingSessionInitSpec(
+		entity.TrainingSessionInitSpecification{
+			UserID:    e.UserID,
+			Date:      time.Now(),
+			Notes:     "",
+			Exercises: exercises,
+		},
+	))
+
+	if err := s.db.InsertTrainingSession(ctx, *session); err != nil {
 		return fmt.Errorf("failed to insert training session: %w", err)
 	}
 
-	if err := s.db.InsertTrainingLogs(ctx, session); err != nil {
+	if err := s.db.InsertTrainingLogs(ctx, *session); err != nil {
 		return fmt.Errorf("failed to insert training logs: %w", err)
 	}
 
 	return nil
+}
+
+func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipment string) error {
+	_, err := s.db.GetExerciseByName(ctx, name)
+	if err == nil {
+		return errs.ErrExerciseAlreadyExists
+	}
+	if !errors.Is(err, errs.ErrExerciseNotFound) {
+		return fmt.Errorf("failed to check existing exercise: %w", err)
+	}
+
+	exercise := entity.NewExercise(entity.WithExerciseInitSpec(entity.ExerciseInitSpecification{
+		Name:        name,
+		MuscleGroup: muscleGroup,
+		Equipment:   equipment,
+	}))
+
+	return s.db.InsertExercise(ctx, *exercise)
 }
 
 func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
@@ -100,7 +118,7 @@ func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup str
 func (s *service) StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	session, err := s.cache.GetSession(ctx, userID)
 	if err == nil && session != nil {
-		return nil, errors.New("training is already started")
+		return nil, errs.ErrTrainingStarted
 	}
 
 	session = entity.NewTrainingSession(entity.WithTrainingSessionInitSpec(entity.TrainingSessionInitSpecification{
@@ -118,80 +136,56 @@ func (s *service) StartTraining(ctx context.Context, userID string) (*entity.Tra
 	return session, nil
 }
 
-func (s *service) AddExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error {
-	session, err := s.cache.GetSession(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if session == nil {
-		return errors.New("session not found")
-	}
-
-	exercise, err := s.db.GetExerciseByID(ctx, exerciseID)
+func (s *service) AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error {
+	session, err := s.getSession(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	sets := []entity.Set{*entity.NewSet(entity.WithSetInitSpec(entity.SetInitSpecification{
-		UserID:     session.UserID(),
-		ExerciseID: exerciseID,
-		Number:     1,
-	}))}
-
-	session.AddExercise(entity.NewSessionExercise(
-		&exercise,
-		sets,
-		entity.WithSessionExerciseInitSpec(entity.SessionExerciseInitSpecification{
-			Number: session.ExerciseCount() + 1,
-		})),
-	)
-
-	return s.cache.SaveSession(ctx, session)
+	return s.addExerciseToSession(ctx, session, exerciseID)
 }
 
-func (s *service) AddSet(ctx context.Context, userID string, set *entity.Set) error {
-	session, err := s.cache.GetSession(ctx, userID)
+func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight float32, reps uint8, notes string) error {
+	session, err := s.getSession(ctx, userID)
 	if err != nil {
 		return err
-	}
-	if session == nil {
-		return errors.New("session not found")
-	}
-
-	// exercise := session.ActiveExercise()
-
-	// exercise.AddSet()
-
-	return s.cache.SaveSession(ctx, session)
-}
-
-func (s *service) UpdateActiveSet(ctx context.Context, userID string, weight float32, reps uint8) error {
-	session, err := s.cache.GetSession(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if session == nil {
-		return errors.New("session not found")
 	}
 
 	activeExercise := session.ActiveExercise()
 	if activeExercise == nil {
-		return errors.New("exercise not found")
+		return errs.ErrExerciseNotFound
 	}
 
-	activeSet := activeExercise.ActiveSet()
-	if activeSet == nil {
-		return errors.New("set not found")
+	lastSet := activeExercise.LastSet()
+	if lastSet == nil {
+		return errs.ErrSetNotFound
 	}
 
-	activeSet.SetWeight(weight)
-	activeSet.SetReps(reps)
+	if lastSet.Weight() == 0 || lastSet.Reps() == 0 {
+		lastSet.SetWeight(weight)
+		lastSet.SetReps(reps)
+		lastSet.SetNotes(notes)
+		return s.cache.SaveSession(ctx, session)
+	}
+
+	newSet := entity.NewSet(entity.WithSetInitSpec(
+		entity.SetInitSpecification{
+			UserID:     lastSet.UserID(),
+			ExerciseID: lastSet.ExerciseID(),
+			Number:     lastSet.Number() + 1,
+			Weight:     weight,
+			Reps:       reps,
+			Notes:      notes,
+		},
+	))
+
+	activeExercise.AddSet(newSet)
 
 	return s.cache.SaveSession(ctx, session)
 }
 
 func (s *service) EndSession(ctx context.Context, userID string) (*entity.TrainingSession, error) {
-	session, err := s.cache.GetSession(ctx, userID)
+	session, err := s.getSession(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +206,53 @@ func (s *service) EndSession(ctx context.Context, userID string) (*entity.Traini
 	return session, nil
 }
 
+func (s *service) ClearSession(ctx context.Context, userID string) error {
+	session, err := s.cache.GetSession(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if session == nil {
+		return errs.ErrSessionNotFound
+	}
+
+	return s.cache.DeleteSession(ctx, userID)
+}
+
 func (s *service) GetCurrentSession(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	return s.cache.GetSession(ctx, userID)
+}
+
+func (s *service) getSession(ctx context.Context, userID string) (*entity.TrainingSession, error) {
+	session, err := s.cache.GetSession(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, errs.ErrSessionNotFound
+	}
+
+	return session, nil
+}
+
+func (s *service) addExerciseToSession(ctx context.Context, session *entity.TrainingSession, exerciseID uuid.UUID) error {
+	exercise, err := s.db.GetExerciseByID(ctx, exerciseID)
+	if err != nil {
+		return err
+	}
+
+	sets := []entity.Set{*entity.NewSet(entity.WithSetInitSpec(entity.SetInitSpecification{
+		UserID:     session.UserID(),
+		ExerciseID: exerciseID,
+		Number:     1,
+	}))}
+
+	session.AddExercise(entity.NewSessionExercise(
+		&exercise,
+		sets,
+		entity.WithSessionExerciseInitSpec(entity.SessionExerciseInitSpecification{
+			Number: session.ExerciseCount() + 1,
+		})),
+	)
+
+	return s.cache.SaveSession(ctx, session)
 }

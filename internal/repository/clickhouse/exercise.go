@@ -7,14 +7,24 @@ import (
 	"fmt"
 
 	"gymnote/internal/entity"
+	"gymnote/internal/errs"
 
 	"github.com/google/uuid"
 )
 
+func (c *clickHouse) InsertExercise(ctx context.Context, req entity.Exercise) error {
+	query := "INSERT INTO exercises (id, name, muscle_group, equipment, created_at) VALUES (?, ?, ?, ?, ?)"
+	if err := c.conn.Exec(ctx, query, req.ID(), req.Name(), req.MuscleGroup(), req.Equipment(), req.CreatedAt()); err != nil {
+		return fmt.Errorf("failed to insert exercise: %w", err)
+	}
+
+	return nil
+}
+
 func (c *clickHouse) GetExerciseByName(ctx context.Context, name string) (entity.Exercise, error) {
 	var row ExerciseRow
 
-	query := "SELECT id, name, muscle_group, equipment, createdAt FROM exercises WHERE name = ? LIMIT 1"
+	query := "SELECT id, name, muscle_group, equipment, created_at FROM exercises WHERE name = ? LIMIT 1"
 
 	err := c.conn.QueryRow(ctx, query, name).Scan(
 		&row.ID,
@@ -25,7 +35,7 @@ func (c *clickHouse) GetExerciseByName(ctx context.Context, name string) (entity
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return entity.Exercise{}, fmt.Errorf("exercise not found: %w", err)
+			return entity.Exercise{}, errs.ErrExerciseNotFound
 		}
 		return entity.Exercise{}, fmt.Errorf("failed to get exercise by name: %w", err)
 	}
@@ -36,7 +46,7 @@ func (c *clickHouse) GetExerciseByName(ctx context.Context, name string) (entity
 func (c *clickHouse) GetExerciseByID(ctx context.Context, id uuid.UUID) (entity.Exercise, error) {
 	var row ExerciseRow
 
-	query := "SELECT id, name, muscle_group, equipment, createdAt FROM exercises WHERE id = ? LIMIT 1"
+	query := "SELECT id, name, muscle_group, equipment, created_at FROM exercises WHERE id = ? LIMIT 1"
 
 	err := c.conn.QueryRow(ctx, query, id).Scan(
 		&row.ID,
@@ -47,7 +57,7 @@ func (c *clickHouse) GetExerciseByID(ctx context.Context, id uuid.UUID) (entity.
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return entity.Exercise{}, fmt.Errorf("exercise not found: %w", err)
+			return entity.Exercise{}, errs.ErrExerciseNotFound
 		}
 		return entity.Exercise{}, fmt.Errorf("failed to get exercise by id: %w", err)
 	}
@@ -58,7 +68,7 @@ func (c *clickHouse) GetExerciseByID(ctx context.Context, id uuid.UUID) (entity.
 func (c *clickHouse) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
 	var result []entity.Exercise
 
-	query := "SELECT id, name, muscle_group, equipment, createdAt FROM exercises WHERE muscle_group = ?"
+	query := "SELECT id, name, muscle_group, equipment, created_at FROM exercises WHERE muscle_group = ? ORDER BY created_at DESC"
 
 	rows, err := c.conn.Query(ctx, query, muscleGroup)
 	if err != nil {

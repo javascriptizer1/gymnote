@@ -9,7 +9,7 @@ import (
 
 type ExerciseRow struct {
 	ID          uuid.UUID `db:"id"`
-	CreatedAt   time.Time `db:"createdAt"`
+	CreatedAt   time.Time `db:"created_at"`
 	Name        string    `db:"name"`
 	MuscleGroup string    `db:"muscle_group"`
 	Equipment   string    `db:"equipment"`
