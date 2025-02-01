@@ -2,14 +2,17 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	Env      string `env:"ENV" env-default:"local"`
-	DB       DBConfig
-	Telegram TelegramConfig
+	Env             string        `env:"ENV" env-default:"local"`
+	GracefulTimeout time.Duration `env:"GRACEFUL_TIMEOUT" env-default:"10s"`
+	DB              DBConfig
+	Redis           CacheConfig
+	Telegram        TelegramConfig
 }
 
 type DBConfig struct {
@@ -18,6 +21,12 @@ type DBConfig struct {
 	User     string `env:"DB_USER" env-required:"true"`
 	Password string `env:"DB_PASSWORD" env-required:"true"`
 	Name     string `env:"DB_NAME" env-required:"true"`
+}
+
+type CacheConfig struct {
+	Address  string `env:"REDIS_ADDRESS" env-required:"true"`
+	Password string `env:"REDIS_PASSWORD" env-required:"true"`
+	DB       int    `env:"REDIS_DB" env-required:"true"`
 }
 
 type TelegramConfig struct {

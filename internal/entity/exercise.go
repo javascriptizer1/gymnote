@@ -6,7 +6,47 @@ import (
 	"github.com/google/uuid"
 )
 
+type ExerciseOption func(o *Exercise)
+
 type Exercise struct {
+	id          uuid.UUID
+	createdAt   time.Time
+	name        string
+	muscleGroup string
+	equipment   string
+}
+
+func (e *Exercise) ID() uuid.UUID {
+	return e.id
+}
+
+func (e *Exercise) CreatedAt() time.Time {
+	return e.createdAt
+}
+
+func (e *Exercise) Name() string {
+	return e.name
+}
+
+func (e *Exercise) MuscleGroup() string {
+	return e.muscleGroup
+}
+
+func (e *Exercise) Equipment() string {
+	return e.equipment
+}
+
+func NewExercise(opts ...ExerciseOption) *Exercise {
+	exercise := &Exercise{}
+
+	for _, opt := range opts {
+		opt(exercise)
+	}
+
+	return exercise
+}
+
+type ExerciseRestoreSpecification struct {
 	ID          uuid.UUID
 	CreatedAt   time.Time
 	Name        string
@@ -14,22 +54,12 @@ type Exercise struct {
 	Equipment   string
 }
 
-type SessionExercise struct {
-	ID             uuid.UUID
-	Exercise       Exercise
-	ExerciseNumber uint8
-	Sets           []Set
-}
-
-func (se *SessionExercise) SetCount() uint8 {
-	return uint8(len(se.Sets))
-}
-
-func (se *SessionExercise) TotalVolume() float32 {
-	totalVolume := float32(0)
-	for _, set := range se.Sets {
-		totalVolume += set.Weight * float32(set.Reps)
+func WithExerciseRestoreSpec(e ExerciseRestoreSpecification) ExerciseOption {
+	return func(o *Exercise) {
+		o.id = e.ID
+		o.createdAt = e.CreatedAt
+		o.name = e.Name
+		o.muscleGroup = e.MuscleGroup
+		o.equipment = e.Equipment
 	}
-
-	return totalVolume
 }

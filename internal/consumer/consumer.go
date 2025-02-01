@@ -12,7 +12,7 @@ type Consumer interface {
 }
 
 type Processor interface {
-	Process(ctx context.Context, e entity.Event) error
+	ParseTraining(ctx context.Context, e entity.Event) error
 }
 
 type consumer struct {
@@ -33,7 +33,7 @@ func (c *consumer) Start(ctx context.Context) {
 		case event := <-c.eventsChan:
 			log.Printf("Got event from user: %s", event.UserID)
 
-			if err := c.processor.Process(ctx, event); err != nil {
+			if err := c.processor.ParseTraining(ctx, event); err != nil {
 				log.Printf("Failed to process event: %v", err)
 			}
 

@@ -6,32 +6,38 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"gymnote/internal/config"
 	"gymnote/internal/consumer"
 	"gymnote/internal/entity"
 	"gymnote/internal/event/telegram"
+	"gymnote/internal/handler/tg"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
 	"gymnote/internal/repository/clickhouse"
+	"gymnote/internal/repository/redis"
 	"gymnote/internal/service"
 )
 
 type app struct {
 	cfg *config.Config
 
-	db repository.DB
+	bot *tgbotapi.BotAPI
+	api tg.API
+
+	db    repository.DB
+	cache repository.Cache
 
 	fetcher   telegram.Fetcher
 	parser    service.Parser
-	processor consumer.Processor
+	processor tg.TrainingService
 	consumer  consumer.Consumer
 
 	eventChan chan entity.Event
-	wg        *sync.WaitGroup
 	ctx       context.Context
 	cancelCtx context.CancelFunc
 }
@@ -40,7 +46,6 @@ func New() (*app, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	a := &app{
-		wg:        &sync.WaitGroup{},
 		ctx:       ctx,
 		cancelCtx: cancel,
 	}
@@ -85,6 +90,13 @@ func (a *app) initDB() error {
 
 	a.db = db
 
+	cache, err := redis.New(a.ctx, &a.cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("init cache error: %w", err)
+	}
+
+	a.cache = cache
+
 	return nil
 }
 
@@ -94,10 +106,22 @@ func (a *app) initChan() error {
 }
 
 func (a *app) initServices() error {
+
+	bot, err := tgbotapi.NewBotAPI(a.cfg.Telegram.BotToken)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	bot.Debug = a.cfg.Telegram.Debug
+
+	a.bot = bot
+
 	a.fetcher = telegram.New(a.eventChan, &a.cfg.Telegram)
 	a.parser = parser.New()
-	a.processor = service.New(a.db, a.parser)
-	a.consumer = consumer.New(a.eventChan, a.processor)
+	a.processor = service.New(a.db, a.cache, a.parser)
+	// a.consumer = consumer.New(a.eventChan, a.processor)
+
+	a.api = *tg.New(a.ctx, a.bot, a.processor)
 
 	return nil
 }
@@ -112,40 +136,33 @@ func (a *app) shutdown() {
 }
 
 func (a *app) runServer() error {
-	go a.fetcher.Start(a.ctx)
-	go a.consumer.Start(a.ctx)
+	// go a.fetcher.Start(a.ctx)
+	// go a.consumer.Start(a.ctx)
 
-	initSignalHandler(a.wg, a.cancelCtx)
+	a.api.Register(a.bot.GetUpdatesChan(tgbotapi.UpdateConfig{}))
+
+	waitGracefulShutdown(a.cancelCtx, a.cfg.GracefulTimeout)
 
 	return nil
 }
 
-func initSignalHandler(wg *sync.WaitGroup, cancel context.CancelFunc) {
-	osSigCh := make(chan os.Signal, 1)
-	signal.Notify(osSigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+func waitGracefulShutdown(cancel context.CancelFunc, timeout time.Duration) {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(
+		quit,
+		syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGHUP, os.Interrupt,
+	)
 
-	wg.Add(1)
+	log.Printf("Caught signal %s. Shutting down...\n", <-quit)
 
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
-
-		signalReceived := <-osSigCh
-
-		switch signalReceived {
-		case syscall.SIGINT:
-			log.Println("Received SIGINT, initiating graceful shutdown...")
-		case syscall.SIGTERM:
-			log.Println("Received SIGTERM, initiating graceful shutdown...")
-		case syscall.SIGQUIT:
-			log.Println("Received SIGQUIT, initiating graceful shutdown...")
-		default:
-			log.Println("Received unknown signal, initiating graceful shutdown...")
-		}
-
 		cancel()
-
-		time.Sleep(2 * time.Second)
+		done <- struct{}{}
 	}()
 
-	wg.Wait()
+	select {
+	case <-time.After(timeout):
+	case <-done:
+	}
 }

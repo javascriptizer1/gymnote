@@ -16,10 +16,10 @@ func (c *clickHouse) InsertTrainingLogs(ctx context.Context, req entity.Training
 		return fmt.Errorf("failed to prepare batch: %w", err)
 	}
 
-	for _, exs := range req.Exercises {
-		for _, log := range exs.Sets {
-			if err := batch.Append(log.ID, log.UserID, req.ID, log.ExerciseID, req.Date, exs.Exercise.Name, exs.ExerciseNumber,
-				log.SetNumber, log.Weight, log.Reps, log.Difficulty, log.Notes, exs.Exercise.MuscleGroup); err != nil {
+	for _, exs := range req.Exercises() {
+		for _, log := range exs.Sets() {
+			if err := batch.Append(log.ID(), log.UserID(), req.ID(), log.ExerciseID(), req.Date(), exs.Exercise.Name(), exs.Number(),
+				log.Number(), log.Weight(), log.Reps(), log.Difficulty(), log.Notes(), exs.Exercise.MuscleGroup()); err != nil {
 				return fmt.Errorf("failed to append training log: %w", err)
 			}
 		}
