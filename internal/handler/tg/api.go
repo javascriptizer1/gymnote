@@ -16,6 +16,7 @@ type CommandHandler func(*tgbotapi.Message)
 type CallbackHandler func(*tgbotapi.CallbackQuery)
 
 type TrainingService interface {
+	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
 	CreateExercise(ctx context.Context, name string, muscleGroup string, equipment string) error
 	StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error
@@ -71,11 +72,13 @@ func (a *API) registerHandlers() {
 		startTrainingCommand:  a.StartTrainingHandler,
 		createExerciseCommand: a.StartCreateExerciseHandler,
 		clearTrainingCommand:  a.ClearTrainingHandler,
+		uploadTrainingCommand: a.StartUploadTrainingHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
 		entity.StateAwaitingSetInput:      a.SetHandler,
 		entity.StateAwaitingExerciseInput: a.CreateExerciseHandler,
+		entity.StateAwaitingTrainingInput: a.UploadTrainingHandler,
 	}
 
 	a.callbackHandlers = map[string]CallbackHandler{
@@ -90,6 +93,7 @@ func (a *API) setBotCommands() {
 	commands := []tgbotapi.BotCommand{
 		{Command: startCommand, Description: "Запустить бота"},
 		{Command: startTrainingCommand, Description: "Начать тренировку"},
+		{Command: uploadTrainingCommand, Description: "Загрузить тренировку"},
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Command: statsCommand, Description: "Посмотреть статистику"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gymnote/internal/helper"
 )
@@ -33,6 +34,7 @@ func New() *parser {
 }
 
 // Пример текста
+// 2024-02-15
 // 1. Жим в Хаммере - 40,12 (легко); 40,12; 40,12
 // 2. Жим лежа - 50,10 (легко); 50,10; 95,1
 // 3. Жим на наклонной скамье - 50,10 (легко);
@@ -41,10 +43,20 @@ func New() *parser {
 // 6. Разводки гантелей лежа - 15,12 (средне)
 // 7. Разгибание в блоке на трицепс - 42,12 (легко); 50,12 (легко); 50,12 (на коленях, средне)
 
-func (p *parser) ParseExercises(s string) ([]Exercise, error) {
+func (p *parser) ParseExercises(s string) ([]Exercise, time.Time, error) {
 	lines := strings.Split(s, "\n")
 	if len(lines) == 0 {
-		return nil, errors.New("no data to process")
+		return nil, time.Time{}, errors.New("no data to process")
+	}
+
+	var date time.Time
+	firstLine := strings.TrimSpace(lines[0])
+	parsedTime, ok := p.isValidDate(firstLine)
+	if ok {
+		date = parsedTime
+		lines = lines[1:]
+	} else {
+		date = time.Now()
 	}
 
 	var exercises []Exercise
@@ -57,13 +69,13 @@ func (p *parser) ParseExercises(s string) ([]Exercise, error) {
 
 		exs, err := p.parseExercise(line)
 		if err != nil {
-			return nil, fmt.Errorf("parse exercise error: %w", err)
+			return nil, time.Time{}, fmt.Errorf("parse exercise error: %w", err)
 		}
 
 		exercises = append(exercises, exs)
 	}
 
-	return exercises, nil
+	return exercises, date, nil
 }
 
 func (p *parser) parseExercise(line string) (Exercise, error) {
@@ -134,4 +146,9 @@ func (p *parser) parseSet(setData string) (Set, error) {
 	}
 
 	return set, nil
+}
+
+func (p *parser) isValidDate(dateStr string) (time.Time, bool) {
+	value, err := time.Parse("2006-01-02", dateStr)
+	return value, err == nil
 }

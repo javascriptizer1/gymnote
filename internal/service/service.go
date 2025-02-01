@@ -15,7 +15,7 @@ import (
 )
 
 type Parser interface {
-	ParseExercises(s string) ([]parser.Exercise, error)
+	ParseExercises(s string) ([]parser.Exercise, time.Time, error)
 }
 
 type service struct {
@@ -32,14 +32,14 @@ func New(db repository.DB, cache repository.Cache, parser Parser) *service {
 	}
 }
 
-func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
+func (s *service) ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error) {
 	if e.UserID == "" || e.Text == "" {
-		return errs.ErrInvalidEventData
+		return nil, errs.ErrInvalidEventData
 	}
 
-	parsedExercises, err := s.parser.ParseExercises(e.Text)
+	parsedExercises, date, err := s.parser.ParseExercises(e.Text)
 	if err != nil {
-		return fmt.Errorf("failed to parse exercises: %w", err)
+		return nil, fmt.Errorf("failed to parse exercises: %w", err)
 	}
 
 	var exercises []entity.SessionExercise
@@ -49,7 +49,7 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
 
 		exercise, err := s.db.GetExerciseByName(ctx, parsedExercise.Name)
 		if err != nil {
-			return fmt.Errorf("failed to get exercise ID for '%s': %w", parsedExercise.Name, err)
+			return nil, fmt.Errorf("failed to get exercise ID for '%s': %w", parsedExercise.Name, err)
 		}
 
 		for setIDX, set := range parsedExercise.Sets {
@@ -76,21 +76,21 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) error {
 	session := entity.NewTrainingSession(entity.WithTrainingSessionInitSpec(
 		entity.TrainingSessionInitSpecification{
 			UserID:    e.UserID,
-			Date:      time.Now(),
+			Date:      date,
 			Notes:     "",
 			Exercises: exercises,
 		},
 	))
 
 	if err := s.db.InsertTrainingSession(ctx, *session); err != nil {
-		return fmt.Errorf("failed to insert training session: %w", err)
+		return nil, fmt.Errorf("failed to insert training session: %w", err)
 	}
 
 	if err := s.db.InsertTrainingLogs(ctx, *session); err != nil {
-		return fmt.Errorf("failed to insert training logs: %w", err)
+		return nil, fmt.Errorf("failed to insert training logs: %w", err)
 	}
 
-	return nil
+	return session, nil
 }
 
 func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipment string) error {

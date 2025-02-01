@@ -66,26 +66,49 @@ func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 
 	name, muscleGroup, equipment := args[0], args[1], args[2]
 	if name == "" {
-		a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, emptyExerciseNameText)))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, emptyExerciseNameText)))
 		return
 	}
 	if !slices.Contains(availableMuscleGroups, muscleGroup) {
-		a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, fmt.Sprintf(unknownMuscleGroupText, availableMuscleGroups))))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, fmt.Sprintf(unknownMuscleGroupText, availableMuscleGroups))))
 		return
 	}
 
 	err := a.trainingService.CreateExercise(a.ctx, name, muscleGroup, equipment)
 	if err != nil {
 		if errors.Is(err, errs.ErrExerciseAlreadyExists) {
-			a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, fmt.Sprintf(exerciseWithNameAlreadyExistsText, name))))
+			_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, fmt.Sprintf(exerciseWithNameAlreadyExistsText, name))))
 		} else {
-			a.bot.Send(tgbotapi.NewMessage(chatID, errCreateExercise))
+			_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errCreateExercise))
 		}
 		return
 	}
 
 	a.clearUserState(userID)
-	a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(exerciseCreatedText, name, muscleGroup)))
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(exerciseCreatedText, name, muscleGroup)))
+}
+
+func (a *API) StartUploadTrainingHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	a.setUserState(userID, entity.StateAwaitingTrainingInput)
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startUploadTrainingText))
+}
+
+func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	session, err := a.trainingService.ParseTraining(a.ctx, entity.Event{UserID: userID, Text: message.Text})
+	if err != nil {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errUploadTraining))
+	}
+
+	a.clearUserState(userID)
+
+	text := fmt.Sprintf(finishText, session.ExerciseCount(), session.SetCount(), session.TotalVolume())
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, text))
 }
 
 func (a *API) ClearTrainingHandler(message *tgbotapi.Message) {
