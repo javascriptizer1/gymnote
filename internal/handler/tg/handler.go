@@ -47,7 +47,7 @@ func (a *API) StartGetTrainingsHandler(message *tgbotapi.Message) {
 	userID := strconv.FormatInt(message.From.ID, 10)
 
 	a.setUserState(userID, entity.StateAwaitingGetTrainingsInput)
-	a.bot.Send(tgbotapi.NewMessage(chatID, startGetTrainingsText))
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startGetTrainingsText))
 }
 
 func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
@@ -96,7 +96,7 @@ func (a *API) StartCreateExerciseHandler(message *tgbotapi.Message) {
 	userID := strconv.FormatInt(message.From.ID, 10)
 
 	a.setUserState(userID, entity.StateAwaitingExerciseInput)
-	a.bot.Send(tgbotapi.NewMessage(chatID, startCreateExerciseText))
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startCreateExerciseText))
 }
 
 func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
@@ -107,7 +107,7 @@ func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 
 	args := strings.SplitN(message.Text, " ", 3)
 	if len(args) < 3 {
-		a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, startCreateExerciseText)))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, startCreateExerciseText)))
 		return
 	}
 
@@ -182,7 +182,7 @@ func (a *API) StartTrainingHandler(message *tgbotapi.Message) {
 	_, err := a.trainingService.StartTraining(a.ctx, userID)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf(errStartTraining, err))
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
@@ -206,19 +206,19 @@ func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 
 	muscleGroup, page, _, err := parseMuscleGroupCallbackData(callback.Data)
 	if err != nil {
-		a.bot.Send(tgbotapi.NewMessage(chatID, errGeneral))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errGeneral))
 		return
 	}
 
 	exercises, err := a.trainingService.GetExercisesByMuscleGroup(a.ctx, muscleGroup)
 	if err != nil {
-		a.bot.Send(tgbotapi.NewMessage(chatID, errExerciseLoad))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errExerciseLoad))
 		return
 	}
 
 	pagedExercises, totalPages, err := paginate(exercises, page, pageSize)
 	if err != nil {
-		a.bot.Send(tgbotapi.NewMessage(chatID, err.Error()))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, err.Error()))
 		return
 	}
 
@@ -262,14 +262,14 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	exerciseID, err := uuid.Parse(exerciseIDStr)
 	if err != nil {
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, errInvalidExerciseID)
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
 	err = a.trainingService.AddTrainingExercise(a.ctx, userID, exerciseID)
 	if err != nil {
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fmt.Sprintf(errAddExercise, err))
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
@@ -288,7 +288,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 	setData := strings.Split(parts[0], ",")
 	if len(setData) != 2 {
 		msg := tgbotapi.NewMessage(message.Chat.ID, errInvalidFormat)
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
@@ -296,7 +296,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 	reps, errReps := strconv.Atoi(setData[1])
 	if errWeight != nil || errReps != nil {
 		msg := tgbotapi.NewMessage(message.Chat.ID, errParseData)
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 	var notes string
@@ -307,7 +307,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 	err := a.trainingService.AddOrUpdateSet(a.ctx, userID, float32(weight), uint8(reps), notes)
 	if err != nil {
 		msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf(errGeneral, err))
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
@@ -356,7 +356,7 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	session, err := a.trainingService.EndSession(a.ctx, userID)
 	if err != nil {
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fmt.Sprintf(errGeneral, err))
-		a.bot.Send(msg)
+		_, _ = a.bot.Send(msg)
 		return
 	}
 
