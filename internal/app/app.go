@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gymnote/internal/config"
+	"gymnote/internal/formatter"
 	"gymnote/internal/handler/tg"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
@@ -28,8 +29,9 @@ type app struct {
 	db    repository.DB
 	cache repository.Cache
 
-	parser  service.Parser
-	service tg.TrainingService
+	parser    service.Parser
+	formatter tg.Formatter
+	service   tg.TrainingService
 }
 
 func New() (*app, error) {
@@ -91,9 +93,10 @@ func (a *app) initDB() error {
 
 func (a *app) initServices() error {
 	a.parser = parser.New()
+	a.formatter = formatter.New()
 	a.service = service.New(a.db, a.cache, a.parser)
 
-	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.service)
+	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.service)
 
 	return nil
 }

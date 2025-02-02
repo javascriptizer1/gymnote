@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -12,11 +13,16 @@ import (
 	"gymnote/internal/entity"
 )
 
+type Formatter interface {
+	FormatTrainingLogs(sessions []entity.TrainingSession) string
+}
+
 type CommandHandler func(*tgbotapi.Message)
 type CallbackHandler func(*tgbotapi.CallbackQuery)
 
 type TrainingService interface {
 	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
+	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate *time.Time) ([]entity.TrainingSession, error)
 	CreateExercise(ctx context.Context, name string, muscleGroup string, equipment string) error
 	StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error
@@ -31,6 +37,7 @@ type API struct {
 	ctx              context.Context
 	cfg              *config.TelegramConfig
 	bot              *tgbotapi.BotAPI
+	formatter        Formatter
 	trainingService  TrainingService
 	commandHandlers  map[string]CommandHandler
 	stateHandlers    map[entity.UserState]func(*tgbotapi.Message)
@@ -39,7 +46,7 @@ type API struct {
 	mu               sync.Mutex
 }
 
-func NewAPI(ctx context.Context, cfg *config.TelegramConfig, trainingService TrainingService) *API {
+func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter, trainingService TrainingService) *API {
 	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		log.Fatalln(err)
@@ -51,6 +58,7 @@ func NewAPI(ctx context.Context, cfg *config.TelegramConfig, trainingService Tra
 		ctx:              ctx,
 		cfg:              cfg,
 		bot:              bot,
+		formatter:        formatter,
 		trainingService:  trainingService,
 		commandHandlers:  make(map[string]CommandHandler),
 		callbackHandlers: make(map[string]CallbackHandler),
@@ -73,12 +81,14 @@ func (a *API) registerHandlers() {
 		createExerciseCommand: a.StartCreateExerciseHandler,
 		clearTrainingCommand:  a.ClearTrainingHandler,
 		uploadTrainingCommand: a.StartUploadTrainingHandler,
+		getTrainingsCommand:   a.StartGetTrainingsHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
-		entity.StateAwaitingSetInput:      a.SetHandler,
-		entity.StateAwaitingExerciseInput: a.CreateExerciseHandler,
-		entity.StateAwaitingTrainingInput: a.UploadTrainingHandler,
+		entity.StateAwaitingSetInput:          a.SetHandler,
+		entity.StateAwaitingExerciseInput:     a.CreateExerciseHandler,
+		entity.StateAwaitingTrainingInput:     a.UploadTrainingHandler,
+		entity.StateAwaitingGetTrainingsInput: a.GetTrainingsHandler,
 	}
 
 	a.callbackHandlers = map[string]CallbackHandler{
@@ -94,6 +104,7 @@ func (a *API) setBotCommands() {
 		{Command: startCommand, Description: "Запустить бота"},
 		{Command: startTrainingCommand, Description: "Начать тренировку"},
 		{Command: uploadTrainingCommand, Description: "Загрузить тренировку"},
+		{Command: getTrainingsCommand, Description: "Посмотреть историю тренировок"},
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Command: statsCommand, Description: "Посмотреть статистику"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},

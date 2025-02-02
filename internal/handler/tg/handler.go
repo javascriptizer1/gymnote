@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -41,6 +42,50 @@ func (a *API) HelpHandler(message *tgbotapi.Message) {
 	_, _ = a.bot.Send(msg)
 }
 
+func (a *API) StartGetTrainingsHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	a.setUserState(userID, entity.StateAwaitingGetTrainingsInput)
+	a.bot.Send(tgbotapi.NewMessage(chatID, startGetTrainingsText))
+}
+
+func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	defer a.clearUserState(userID)
+
+	var fromDate, toDate *time.Time
+	args := strings.SplitN(message.Text, " ", 2)
+
+	if len(args) >= 1 {
+		from, err := time.Parse("2006-01-02", args[0])
+		if err == nil {
+			fromDate = &from
+		}
+	}
+	if len(args) == 2 {
+		to, err := time.Parse("2006-01-02", args[1])
+		if err == nil {
+			toDate = &to
+		}
+	}
+
+	trainings, err := a.trainingService.GetTrainingSessions(a.ctx, userID, fromDate, toDate)
+	if err != nil {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errGetTrainings))
+		return
+	}
+	if len(trainings) == 0 {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, notFoundTrainingsText))
+		return
+	}
+
+	text := a.formatter.FormatTrainingLogs(trainings)
+	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, text))
+}
+
 func (a *API) UnknownCommandHandler(message *tgbotapi.Message) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, unknownCommandText)
 	_, _ = a.bot.Send(msg)
@@ -51,16 +96,18 @@ func (a *API) StartCreateExerciseHandler(message *tgbotapi.Message) {
 	userID := strconv.FormatInt(message.From.ID, 10)
 
 	a.setUserState(userID, entity.StateAwaitingExerciseInput)
-	a.bot.Send(tgbotapi.NewMessage(chatID, startCreateExercise))
+	a.bot.Send(tgbotapi.NewMessage(chatID, startCreateExerciseText))
 }
 
 func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
 	userID := strconv.FormatInt(message.From.ID, 10)
 
+	defer a.clearUserState(userID)
+
 	args := strings.SplitN(message.Text, " ", 3)
 	if len(args) < 3 {
-		a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, startCreateExercise)))
+		a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, startCreateExerciseText)))
 		return
 	}
 
@@ -84,7 +131,6 @@ func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 		return
 	}
 
-	a.clearUserState(userID)
 	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(exerciseCreatedText, name, muscleGroup)))
 }
 
@@ -100,12 +146,12 @@ func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
 	userID := strconv.FormatInt(message.From.ID, 10)
 
+	defer a.clearUserState(userID)
+
 	session, err := a.trainingService.ParseTraining(a.ctx, entity.Event{UserID: userID, Text: message.Text})
 	if err != nil {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errUploadTraining))
 	}
-
-	a.clearUserState(userID)
 
 	text := fmt.Sprintf(finishText, session.ExerciseCount(), session.SetCount(), session.TotalVolume())
 	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, text))
@@ -113,6 +159,8 @@ func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
 
 func (a *API) ClearTrainingHandler(message *tgbotapi.Message) {
 	userID := strconv.FormatInt(message.From.ID, 10)
+
+	defer a.clearUserState(userID)
 
 	if err := a.trainingService.ClearSession(a.ctx, userID); err != nil {
 		text := errClearTraining
@@ -124,7 +172,6 @@ func (a *API) ClearTrainingHandler(message *tgbotapi.Message) {
 		return
 	}
 
-	a.clearUserState(userID)
 	_, _ = a.bot.Send(tgbotapi.NewMessage(message.From.ID, clearTrainingDoneText))
 }
 
@@ -283,6 +330,8 @@ func (a *API) StartNewExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	userID := strconv.FormatInt(callback.From.ID, 10)
 
+	defer a.clearUserState(userID)
+
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
 		plainGroup := strings.TrimLeft(group, "💪🏋️🦵 ")
@@ -294,7 +343,6 @@ func (a *API) StartNewExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	msg.ParseMode = parseMode
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(buttons...)
 
-	a.clearUserState(userID)
 	_, _ = a.bot.Send(msg)
 }
 
@@ -302,6 +350,8 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
 	userID := strconv.FormatInt(callback.From.ID, 10)
+
+	defer a.clearUserState(userID)
 
 	session, err := a.trainingService.EndSession(a.ctx, userID)
 	if err != nil {
@@ -314,7 +364,6 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, text)
 	editMsg.ParseMode = parseMode
 
-	a.clearUserState(userID)
 	_, _ = a.bot.Send(editMsg)
 }
 

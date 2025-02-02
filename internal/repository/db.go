@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -18,4 +19,5 @@ type DB interface {
 
 	InsertTrainingLogs(ctx context.Context, req entity.TrainingSession) error
 	InsertTrainingSession(ctx context.Context, req entity.TrainingSession) error
+	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate time.Time) ([]entity.TrainingSession, error)
 }

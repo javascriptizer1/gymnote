@@ -111,6 +111,22 @@ func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipme
 	return s.db.InsertExercise(ctx, *exercise)
 }
 
+func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate *time.Time) ([]entity.TrainingSession, error) {
+	now := time.Now()
+
+	if fromDate == nil {
+		defaultFrom := now.AddDate(0, 0, -14)
+		fromDate = &defaultFrom
+	}
+
+	if toDate == nil {
+		toDate = &now
+	}
+
+	sessions, err := s.db.GetTrainingSessions(ctx, userID, *fromDate, *toDate)
+	return sessions, err
+}
+
 func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
 	return s.db.GetExercisesByMuscleGroup(ctx, muscleGroup)
 }

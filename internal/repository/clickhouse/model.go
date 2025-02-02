@@ -1,10 +1,11 @@
 package clickhouse
 
 import (
-	"gymnote/internal/entity"
 	"time"
 
 	"github.com/google/uuid"
+
+	"gymnote/internal/entity"
 )
 
 type ExerciseRow struct {
