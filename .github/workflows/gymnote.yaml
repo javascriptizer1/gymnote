@@ -100,11 +100,15 @@ jobs:
       - name: Copy migrations to VPS
         run: |
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations          
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'EOF'
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
+            export VPS_USER=$VPS_USER
+            export VPS_HOST=$VPS_HOST
+            
             if [ -d "/root/apps/gymnote/migrations" ]; then
               echo "Removing old migrations directory"
               rm -rf /root/apps/gymnote/migrations
             fi
+
             sudo mv /home/$VPS_USER/apps/gymnote/migrations /root/apps/gymnote/migrations
           EOF
 
