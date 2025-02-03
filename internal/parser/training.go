@@ -80,7 +80,7 @@ func (p *parser) ParseExercises(s string) ([]Exercise, time.Time, error) {
 
 func (p *parser) parseExercise(line string) (Exercise, error) {
 	exs := Exercise{}
-	parts := strings.SplitN(line, "-", 2)
+	parts := strings.SplitN(line, " - ", 2)
 	if len(parts) != 2 {
 		return exs, errors.New("invalid exercise format")
 	}
