@@ -227,6 +227,7 @@ func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
 	session, err := a.trainingService.ParseTraining(a.ctx, entity.Event{UserID: userID, Text: message.Text})
 	if err != nil {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errUploadTraining))
+		return
 	}
 
 	text := fmt.Sprintf(finishText, session.ExerciseCount(), session.SetCount(), session.TotalVolume())

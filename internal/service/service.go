@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,11 +35,13 @@ func New(db repository.DB, cache repository.Cache, parser Parser) *service {
 
 func (s *service) ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error) {
 	if e.UserID == "" || e.Text == "" {
+		log.Println("Invalid event data: missing UserID or Text")
 		return nil, errs.ErrInvalidEventData
 	}
 
 	parsedExercises, date, err := s.parser.ParseExercises(e.Text)
 	if err != nil {
+		log.Printf("Error parsing exercises: %v\n", err)
 		return nil, fmt.Errorf("failed to parse exercises: %w", err)
 	}
 
@@ -49,6 +52,7 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) (*entity.Tr
 
 		exercise, err := s.db.GetExerciseByName(ctx, parsedExercise.Name)
 		if err != nil {
+			log.Printf("Error getting exercise ID for '%s': %v\n", parsedExercise.Name, err)
 			return nil, fmt.Errorf("failed to get exercise ID for '%s': %w", parsedExercise.Name, err)
 		}
 
@@ -83,10 +87,12 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) (*entity.Tr
 	))
 
 	if err := s.db.InsertTrainingSession(ctx, *session); err != nil {
+		log.Printf("Error inserting training session: %v\n", err)
 		return nil, fmt.Errorf("failed to insert training session: %w", err)
 	}
 
 	if err := s.db.InsertTrainingLogs(ctx, *session); err != nil {
+		log.Printf("Error inserting training logs: %v\n", err)
 		return nil, fmt.Errorf("failed to insert training logs: %w", err)
 	}
 
@@ -104,9 +110,11 @@ func (s *service) GetExerciseProgression(ctx context.Context, userID string, exe
 func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipment string) error {
 	_, err := s.db.GetExerciseByName(ctx, name)
 	if err == nil {
+		log.Printf("Exercise '%s' already exists\n", name)
 		return errs.ErrExerciseAlreadyExists
 	}
 	if !errors.Is(err, errs.ErrExerciseNotFound) {
+		log.Printf("Error checking existing exercise: %v\n", err)
 		return fmt.Errorf("failed to check existing exercise: %w", err)
 	}
 
@@ -116,7 +124,11 @@ func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipme
 		Equipment:   equipment,
 	}))
 
-	return s.db.InsertExercise(ctx, *exercise)
+	if err := s.db.InsertExercise(ctx, *exercise); err != nil {
+		log.Printf("Error inserting new exercise '%s': %v\n", name, err)
+		return err
+	}
+	return nil
 }
 
 func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate *time.Time) ([]entity.TrainingSession, error) {
@@ -132,16 +144,16 @@ func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDa
 	}
 
 	sessions, err := s.db.GetTrainingSessions(ctx, userID, *fromDate, *toDate)
+	if err != nil {
+		log.Printf("Error retrieving training sessions for user '%s': %v\n", userID, err)
+	}
 	return sessions, err
-}
-
-func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
-	return s.db.GetExercisesByMuscleGroup(ctx, muscleGroup)
 }
 
 func (s *service) StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	session, err := s.cache.GetSession(ctx, userID)
 	if err == nil && session != nil {
+		log.Printf("Training session already started for user '%s'\n", userID)
 		return nil, errs.ErrTrainingStarted
 	}
 
@@ -154,6 +166,7 @@ func (s *service) StartTraining(ctx context.Context, userID string) (*entity.Tra
 
 	err = s.cache.SaveSession(ctx, session)
 	if err != nil {
+		log.Printf("Error saving training session for user '%s': %v\n", userID, err)
 		return nil, err
 	}
 
@@ -163,6 +176,7 @@ func (s *service) StartTraining(ctx context.Context, userID string) (*entity.Tra
 func (s *service) AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error {
 	session, err := s.getSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
 		return err
 	}
 
@@ -172,16 +186,19 @@ func (s *service) AddTrainingExercise(ctx context.Context, userID string, exerci
 func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight float32, reps uint8, notes string) error {
 	session, err := s.getSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
 		return err
 	}
 
 	activeExercise := session.ActiveExercise()
 	if activeExercise == nil {
+		log.Printf("Exercise not found for user '%s'\n", userID)
 		return errs.ErrExerciseNotFound
 	}
 
 	lastSet := activeExercise.LastSet()
 	if lastSet == nil {
+		log.Printf("Set not found for exercise '%s'\n", activeExercise.Name())
 		return errs.ErrSetNotFound
 	}
 
@@ -211,19 +228,23 @@ func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight floa
 func (s *service) EndSession(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	session, err := s.getSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
 		return nil, err
 	}
 
 	if err := s.db.InsertTrainingSession(ctx, *session); err != nil {
+		log.Printf("Error inserting training session: %v\n", err)
 		return nil, fmt.Errorf("failed to insert training session: %w", err)
 	}
 
 	if err := s.db.InsertTrainingLogs(ctx, *session); err != nil {
+		log.Printf("Error inserting training logs: %v\n", err)
 		return nil, fmt.Errorf("failed to insert training logs: %w", err)
 	}
 
 	err = s.cache.DeleteSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error deleting session for user '%s': %v\n", userID, err)
 		return nil, err
 	}
 
@@ -233,9 +254,11 @@ func (s *service) EndSession(ctx context.Context, userID string) (*entity.Traini
 func (s *service) ClearSession(ctx context.Context, userID string) error {
 	session, err := s.cache.GetSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
 		return err
 	}
 	if session == nil {
+		log.Printf("Session not found for user '%s'\n", userID)
 		return errs.ErrSessionNotFound
 	}
 
@@ -249,9 +272,11 @@ func (s *service) GetCurrentSession(ctx context.Context, userID string) (*entity
 func (s *service) getSession(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	session, err := s.cache.GetSession(ctx, userID)
 	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
 		return nil, err
 	}
 	if session == nil {
+		log.Printf("Session not found for user '%s'\n", userID)
 		return nil, errs.ErrSessionNotFound
 	}
 
@@ -261,6 +286,7 @@ func (s *service) getSession(ctx context.Context, userID string) (*entity.Traini
 func (s *service) addExerciseToSession(ctx context.Context, session *entity.TrainingSession, exerciseID uuid.UUID) error {
 	exercise, err := s.db.GetExerciseByID(ctx, exerciseID)
 	if err != nil {
+		log.Printf("Error getting exercise by ID '%v': %v\n", exerciseID, err)
 		return err
 	}
 
@@ -278,5 +304,9 @@ func (s *service) addExerciseToSession(ctx context.Context, session *entity.Trai
 		})),
 	)
 
-	return s.cache.SaveSession(ctx, session)
+	err = s.cache.SaveSession(ctx, session)
+	if err != nil {
+		log.Printf("Error saving session after adding exercise: %v\n", err)
+	}
+	return err
 }
