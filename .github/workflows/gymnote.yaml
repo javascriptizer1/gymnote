@@ -33,9 +33,9 @@ jobs:
           go-version: 1.23.5
 
       # - name: Run linters
-        # run: |
-        #   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
-        #   golangci-lint run --config ./.golangci.pipeline.yaml
+      # run: |
+      #   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+      #   golangci-lint run --config ./.golangci.pipeline.yaml
 
   deploy-vps:
     runs-on: ubuntu-latest
@@ -81,6 +81,9 @@ jobs:
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/.env /root/apps/gymnote/.env && sudo chmod 600 /root/apps/gymnote/.env"
+
+      - name: List files in the repo
+        run: ls -la
 
       - name: Copy binary to VPS
         run: |
