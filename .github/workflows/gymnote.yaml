@@ -44,6 +44,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && github.event.inputs.deploy_target == 'vps'
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Install dependencies
         run: |
           sudo apt-get update
