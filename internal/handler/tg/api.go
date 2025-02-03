@@ -9,19 +9,23 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 
+	"gymnote/internal/chart"
 	"gymnote/internal/config"
 	"gymnote/internal/entity"
 )
 
-type Formatter interface {
-	FormatTrainingLogs(sessions []entity.TrainingSession) string
-}
-
 type CommandHandler func(*tgbotapi.Message)
 type CallbackHandler func(*tgbotapi.CallbackQuery)
 
+type Formatter interface {
+	FormatTrainingLogs(sessions []entity.TrainingSession) string
+}
+type ChartService interface {
+	GenerateLinearChart(config chart.LinearChartConfig) error
+}
 type TrainingService interface {
 	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
+	GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID) ([]entity.ExerciseProgression, error)
 	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate *time.Time) ([]entity.TrainingSession, error)
 	CreateExercise(ctx context.Context, name string, muscleGroup string, equipment string) error
 	StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error)
@@ -38,6 +42,7 @@ type API struct {
 	cfg              *config.TelegramConfig
 	bot              *tgbotapi.BotAPI
 	formatter        Formatter
+	chartService     ChartService
 	trainingService  TrainingService
 	commandHandlers  map[string]CommandHandler
 	stateHandlers    map[entity.UserState]func(*tgbotapi.Message)
@@ -46,7 +51,7 @@ type API struct {
 	mu               sync.Mutex
 }
 
-func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter, trainingService TrainingService) *API {
+func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter, chartService ChartService, trainingService TrainingService) *API {
 	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		log.Fatalln(err)
@@ -59,6 +64,7 @@ func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter
 		cfg:              cfg,
 		bot:              bot,
 		formatter:        formatter,
+		chartService:     chartService,
 		trainingService:  trainingService,
 		commandHandlers:  make(map[string]CommandHandler),
 		callbackHandlers: make(map[string]CallbackHandler),
@@ -75,13 +81,14 @@ func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter
 
 func (a *API) registerHandlers() {
 	a.commandHandlers = map[string]CommandHandler{
-		startCommand:          a.StartHandler,
-		helpCommand:           a.HelpHandler,
-		startTrainingCommand:  a.StartTrainingHandler,
-		createExerciseCommand: a.StartCreateExerciseHandler,
-		clearTrainingCommand:  a.ClearTrainingHandler,
-		uploadTrainingCommand: a.StartUploadTrainingHandler,
-		getTrainingsCommand:   a.StartGetTrainingsHandler,
+		startCommand:                  a.StartHandler,
+		helpCommand:                   a.HelpHandler,
+		startTrainingCommand:          a.StartTrainingHandler,
+		createExerciseCommand:         a.StartCreateExerciseHandler,
+		clearTrainingCommand:          a.ClearTrainingHandler,
+		uploadTrainingCommand:         a.StartUploadTrainingHandler,
+		getTrainingsCommand:           a.StartGetTrainingsHandler,
+		getExerciseProgressionCommand: a.StartExerciseProgressionChartHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
@@ -92,10 +99,11 @@ func (a *API) registerHandlers() {
 	}
 
 	a.callbackHandlers = map[string]CallbackHandler{
-		musclePrefix:           a.MuscleGroupHandler,
-		exercisePrefix:         a.ExerciseHandler,
-		finishTrainingPrefix:   a.FinishTrainingHandler,
-		startNewExercisePrefix: a.StartNewExerciseHandler,
+		musclePrefix:                      a.MuscleGroupHandler,
+		exercisePrefix:                    a.ExerciseHandler,
+		finishTrainingPrefix:              a.FinishTrainingHandler,
+		startNewExercisePrefix:            a.StartNewExerciseHandler,
+		startGetExerciseProgressionPrefix: a.ExerciseProgressionChartHandler,
 	}
 }
 
@@ -105,8 +113,8 @@ func (a *API) setBotCommands() {
 		{Command: startTrainingCommand, Description: "Начать тренировку"},
 		{Command: uploadTrainingCommand, Description: "Загрузить тренировку"},
 		{Command: getTrainingsCommand, Description: "Посмотреть историю тренировок"},
+		{Command: getExerciseProgressionCommand, Description: "Посмотреть прогрессию весов по упражнению"},
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
-		{Command: statsCommand, Description: "Посмотреть статистику"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},
 		{Command: helpCommand, Description: "Помощь и команды"},
 	}

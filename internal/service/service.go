@@ -93,6 +93,14 @@ func (s *service) ParseTraining(ctx context.Context, e entity.Event) (*entity.Tr
 	return session, nil
 }
 
+func (s *service) GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID) ([]entity.ExerciseProgression, error) {
+	now := time.Now()
+	fromDate := now.AddDate(-1, 0, 0)
+	toDate := now
+
+	return s.db.GetExerciseProgression(ctx, userID, exerciseID, fromDate, toDate)
+}
+
 func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipment string) error {
 	_, err := s.db.GetExerciseByName(ctx, name)
 	if err == nil {

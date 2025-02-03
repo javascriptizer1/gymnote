@@ -31,6 +31,7 @@ type CacheConfig struct {
 
 type TelegramConfig struct {
 	BotToken          string `env:"TELEGRAM_BOT_TOKEN" env-required:"true"`
+	GraphicsPath      string `env:"TELEGRAM_BOT_GRAPHICS_PATH" env-required:"true"`
 	GreetingStickerID string `env:"TELEGRAM_BOT_GREETING_STICKER_ID" env-required:"false"`
 	AuthorName        string `env:"TELEGRAM_BOT_AUTHOR_NAME" env-required:"false"`
 	Timeout           int    `env:"TELEGRAM_BOT_TIMEOUT" env-default:"60"`

@@ -3,6 +3,9 @@ package clickhouse
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/google/uuid"
 
 	"gymnote/internal/entity"
 )
@@ -30,4 +33,47 @@ func (c *clickHouse) InsertTrainingLogs(ctx context.Context, req entity.Training
 	}
 
 	return nil
+}
+
+func (c *clickHouse) GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID, fromDate, toDate time.Time) ([]entity.ExerciseProgression, error) {
+	var result []entity.ExerciseProgression
+
+	query := `
+		SELECT exercise_name, session_date, MAX(weight) AS weight, MAX(reps) AS reps
+		FROM training_logs
+		WHERE user_id = ? AND exercise_id = ? AND session_date BETWEEN ? AND ?
+		GROUP BY exercise_name, session_date
+		ORDER BY session_date;
+	`
+
+	rows, err := c.conn.Query(ctx, query, userID, exerciseID, fromDate, toDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exercise progression: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			name   string
+			date   time.Time
+			weight float32
+			reps   uint8
+		)
+		if err := rows.Scan(&name, &date, &weight, &reps); err != nil {
+			return nil, fmt.Errorf("row scan error: %w", err)
+		}
+
+		result = append(result, entity.ExerciseProgression{
+			ExerciseName: name,
+			SessionDate:  date,
+			Weight:       weight,
+			Reps:         reps,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("unexpected error: %w", err)
+	}
+
+	return result, nil
 }

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"gymnote/internal/chart"
 	"gymnote/internal/config"
 	"gymnote/internal/formatter"
 	"gymnote/internal/handler/tg"
@@ -31,6 +32,7 @@ type app struct {
 
 	parser    service.Parser
 	formatter tg.Formatter
+	chart     tg.ChartService
 	service   tg.TrainingService
 }
 
@@ -94,9 +96,10 @@ func (a *app) initDB() error {
 func (a *app) initServices() error {
 	a.parser = parser.New()
 	a.formatter = formatter.New()
+	a.chart = chart.New()
 	a.service = service.New(a.db, a.cache, a.parser)
 
-	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.service)
+	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.chart, a.service)
 
 	return nil
 }
