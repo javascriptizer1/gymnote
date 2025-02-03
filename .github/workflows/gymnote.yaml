@@ -112,19 +112,17 @@ jobs:
             sudo mv /home/$VPS_USER/apps/gymnote/migrations /root/apps/gymnote/migrations
           EOF
 
-      - name: Print database environment variables
-        run: |
-          echo "$DB_USER"
-          echo "$DB_PASSWORD"
-
       - name: Run database migrations
         run: |
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'EOF'
-          set -e
-          export GOOSE_DRIVER=clickhouse
-          export GOOSE_DBSTRING="tcp://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
-          cd /root/apps/gymnote || exit 1
-          goose -dir ./migrations/clickhouse up || exit 1
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
+            export VPS_USER=$VPS_USER
+            export VPS_HOST=$VPS_HOST
+            export GOOSE_DRIVER=clickhouse
+            export GOOSE_DBSTRING="tcp://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
+
+            set -e
+            cd /root/apps/gymnote || exit 1
+            goose -dir ./migrations/clickhouse up || exit 1
           EOF
 
       - name: Set up systemd service on VPS
