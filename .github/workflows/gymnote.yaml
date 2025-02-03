@@ -38,9 +38,9 @@ jobs:
           go-version: 1.23.5
 
       # - name: Run linters
-      # run: |
-      #   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
-      #   golangci-lint run --config ./.golangci.pipeline.yaml
+      #   run: |
+      #     go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+      #     golangci-lint run --config ./.golangci.pipeline.yaml
 
   deploy-vps:
     runs-on: ubuntu-latest
@@ -88,40 +88,33 @@ jobs:
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/.env /root/apps/gymnote/.env && sudo chmod 600 /root/apps/gymnote/.env"
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod 600 /home/$VPS_USER/apps/gymnote/.env"
 
       - name: Copy binary to VPS
         run: |
           go mod download
           go build -o ./bin ./cmd/gymnote/main.go
           scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/bin /root/apps/gymnote/bin"
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
       - name: Copy migrations to VPS
         run: |
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations          
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
-            export VPS_USER=$VPS_USER
-            export VPS_HOST=$VPS_HOST
-            
-            if [ -d "/root/apps/gymnote/migrations" ]; then
+            if [ -d "/home/$VPS_USER/apps/gymnote/migrations" ]; then
               echo "Removing old migrations directory"
-              rm -rf /root/apps/gymnote/migrations
+              rm -rf /home/$VPS_USER/apps/gymnote/migrations
             fi
-
-            sudo mv /home/$VPS_USER/apps/gymnote/migrations /root/apps/gymnote/migrations
+            mv /home/$VPS_USER/apps/gymnote/migrations /home/$VPS_USER/apps/gymnote/migrations
           EOF
 
       - name: Run database migrations
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
-            export VPS_USER=$VPS_USER
-            export VPS_HOST=$VPS_HOST
             export GOOSE_DRIVER=clickhouse
             export GOOSE_DBSTRING="tcp://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
-
             set -e
-            cd /root/apps/gymnote || exit 1
+            cd /home/$VPS_USER/apps/gymnote || exit 1
             goose -dir ./migrations/clickhouse up || exit 1
           EOF
 
