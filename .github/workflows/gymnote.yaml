@@ -102,6 +102,11 @@ jobs:
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/migrations /root/apps/gymnote/migrations"
 
+      - name: Print database environment variables
+        run: |
+          echo "$DB_USER"
+          echo "$DB_PASSWORD"
+
       - name: Run database migrations
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'EOF'
