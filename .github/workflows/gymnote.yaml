@@ -71,11 +71,14 @@ jobs:
           echo "REDIS_PASSWORD=${{ vars.REDIS_PASSWORD }}" >> .env
           echo "REDIS_DB=${{ vars.REDIS_DB }}" >> .env
 
+      - name: Set up SSH Key
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" > deploy_key.pem
+          chmod 600 deploy_key.pem
+
       - name: Copy .env file to VPS
         run: |
-          echo "$VPS_SSH_KEY" > deploy_key.pem
-          echo "$VPS_SSH_KEY"
-          chmod 600 deploy_key.pem
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/.env /root/apps/gymnote/.env && sudo chmod 600 /root/apps/gymnote/.env"
 
