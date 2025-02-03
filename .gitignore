@@ -28,5 +28,6 @@ vendor.*/
 go.work
 go.work.sum
 
+graphs
 # Env
 .env

@@ -14,9 +14,10 @@ CREATE TABLE IF NOT EXISTS training_logs (
     difficulty String,
     notes String,
     muscle_group String,
+    created_at DateTime
 ) ENGINE = MergeTree()
-  PRIMARY KEY (id, session_id, exercise_id, exercise_number, set_number)
-  ORDER BY (id, session_id, exercise_id, exercise_number, set_number);
+  PRIMARY KEY (id, session_id, exercise_id, exercise_number, set_number, created_at)
+  ORDER BY (id, session_id, exercise_id, exercise_number, set_number, created_at);
 -- +goose StatementEnd
 
 -- +goose Down
