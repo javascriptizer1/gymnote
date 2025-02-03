@@ -16,6 +16,11 @@ env:
   VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
   VPS_USER: ${{ secrets.VPS_USER }}
   VPS_HOST: ${{ secrets.VPS_HOST }}
+  DB_USER: ${{ vars.DB_USER }}
+  DB_PASSWORD: ${{ vars.DB_PASSWORD }}
+  DB_HOST: ${{ vars.DB_HOST }}
+  DB_PORT: ${{ vars.DB_PORT }}
+  DB_NAME: ${{ vars.DB_NAME }}
 
 jobs:
   lint:
@@ -84,9 +89,6 @@ jobs:
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/.env /root/apps/gymnote/.env && sudo chmod 600 /root/apps/gymnote/.env"
-
-      - name: List files in the repo
-        run: ls -la
 
       - name: Copy binary to VPS
         run: |
