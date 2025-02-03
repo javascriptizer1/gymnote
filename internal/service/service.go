@@ -150,6 +150,16 @@ func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDa
 	return sessions, err
 }
 
+func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
+	exercises, err := s.db.GetExercisesByMuscleGroup(ctx, muscleGroup)
+	if err != nil {
+		log.Printf("Error retrieving exercises by muscle group '%s': %v\n", muscleGroup, err)
+		return nil, err
+	}
+
+	return exercises, nil
+}
+
 func (s *service) StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error) {
 	session, err := s.cache.GetSession(ctx, userID)
 	if err == nil && session != nil {
