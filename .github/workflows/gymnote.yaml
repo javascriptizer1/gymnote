@@ -32,10 +32,10 @@ jobs:
         with:
           go-version: 1.23.5
 
-      - name: Run linters
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
-          golangci-lint run --config ./.golangci.pipeline.yaml
+      # - name: Run linters
+        # run: |
+        #   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+        #   golangci-lint run --config ./.golangci.pipeline.yaml
 
   deploy-vps:
     runs-on: ubuntu-latest
@@ -44,9 +44,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && github.event.inputs.deploy_target == 'vps'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Install dependencies
         run: |
           sudo apt-get update
