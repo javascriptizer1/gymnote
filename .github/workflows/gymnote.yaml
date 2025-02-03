@@ -1,0 +1,109 @@
+name: Deploy Gymnote Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy the service'
+        required: true
+        default: 'false'
+      deploy_target:
+        description: 'Deployment target (vps)'
+        required: true
+        default: 'vps'
+
+env:
+  VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+  VPS_USER: ${{ secrets.VPS_USER }}
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.5
+
+      - name: Run linters
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+          golangci-lint run --config ./.golangci.pipeline.yaml
+
+  deploy-vps:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: lint
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && github.event.inputs.deploy_target == 'vps'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Create .env file
+        run: |
+          echo "ENV=${{ vars.ENV }}" >> .env
+          echo "GRACEFUL_TIMEOUT=${{ vars.GRACEFUL_TIMEOUT }}" >> .env
+
+          echo "TELEGRAM_BOT_TOKEN=${{ vars.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "TELEGRAM_BOT_TIMEOUT=${{ vars.TELEGRAM_BOT_TIMEOUT }}" >> .env
+          echo "TELEGRAM_BOT_DEBUG=${{ vars.TELEGRAM_BOT_DEBUG }}" >> .env
+          echo "TELEGRAM_BOT_GRAPHICS_PATH=${{ vars.TELEGRAM_BOT_GRAPHICS_PATH }}" >> .env
+          echo "TELEGRAM_BOT_GREETING_STICKER_ID=${{ vars.TELEGRAM_BOT_GREETING_STICKER_ID }}" >> .env
+          echo "TELEGRAM_BOT_AUTHOR_NAME=${{ vars.TELEGRAM_BOT_AUTHOR_NAME }}" >> .env
+
+          echo "DB_USER=${{ vars.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ vars.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
+          echo "DB_NAME=${{ vars.DB_NAME }}" >> .env
+
+          echo "REDIS_ADDRESS=${{ vars.REDIS_ADDRESS }}" >> .env
+          echo "REDIS_PASSWORD=${{ vars.REDIS_PASSWORD }}" >> .env
+          echo "REDIS_DB=${{ vars.REDIS_DB }}" >> .env
+
+      - name: Copy .env file to VPS
+        run: |
+          echo "$VPS_SSH_KEY" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/.env /root/apps/gymnote/.env && sudo chmod 600 /root/apps/gymnote/.env"
+
+      - name: Copy binary to VPS
+        run: |
+          go mod download
+          go build -o ./bin ./cmd/gymnote/main.go
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/bin /root/apps/gymnote/bin"
+
+      - name: Copy migrations to VPS
+        run: |
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/migrations /root/apps/gymnote/migrations"
+
+      - name: Run database migrations
+        run: |
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << 'EOF'
+          set -e
+          export GOOSE_DRIVER=clickhouse
+          export GOOSE_DBSTRING="tcp://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
+          cd /root/apps/gymnote || exit 1
+          goose -dir ./migrations/clickhouse up || exit 1
+          EOF
+
+      - name: Set up systemd service on VPS
+        run: |
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/gymnote.ini /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service && sudo systemctl status gymnote.service"
