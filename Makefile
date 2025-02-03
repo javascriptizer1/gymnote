@@ -20,6 +20,9 @@ migrate-up:
 migrate-gen:
 	goose -dir $(MIGRATIONS_SRC_DIR) create ${name} sql
 
+lint:
+	docker run --rm -v .:/src -w /src golangci/golangci-lint:v1.59.1 golangci-lint run
+
 fmt:
 	gofmt -w .
 	goimports -w -local github.com/javascriptizer1 .

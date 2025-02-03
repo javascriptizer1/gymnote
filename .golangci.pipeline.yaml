@@ -1,0 +1,55 @@
+run:
+  concurrency: 8
+  timeout: 10m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+  - bin
+  - vendor
+  - var
+  - tmp
+  - .cache
+  skip-files:
+  - \.pb\.go$
+  - \.pb\.gw\.go$
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+linters:
+  disable-all: true
+  enable:
+  - errcheck
+  - goconst
+  - goimports
+  - gosec
+  - govet
+  - ineffassign
+  - megacheck
+  - revive
+  - typecheck
+  - unused
+
+issues:
+  exclude-use-default: false
+  exclude:
+  - G104
+  - exported func .* returns unexported type .*, which can be annoying to use
+  - should have a package comment
+  - don't use an underscore in package name
+  - 'exported: exported function .* should have comment or be unexported'
+  - 'exported: exported method .* should have comment or be unexported'
+  - 'exported: exported type .* should have comment or be unexported'
+  - 'exported: exported const .* should have comment or be unexported'
+  - 'SA1019: grpc.Dial is deprecated: use NewClient instead.  Will be supported throughout 1.x.'
