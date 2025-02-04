@@ -32,7 +32,7 @@ func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession) string
 
 			sb.WriteString(fmt.Sprintf("%d. %s - %s\n", ex.Number(), ex.Exercise.Name(), strings.Join(setStrings, "; ")))
 		}
-		sb.WriteString("\n")
+		sb.WriteString("\n\n")
 	}
 
 	return sb.String()

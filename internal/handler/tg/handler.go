@@ -110,7 +110,7 @@ func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) 
 	}
 
 	if err = a.chartService.GenerateLinearChart(cfg); err != nil {
-		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errGeneral))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errProgression))
 		return
 	}
 

@@ -120,19 +120,28 @@ func (p *parser) parseSet(setData string) (Set, error) {
 	}
 
 	fields := strings.Split(setData, ",")
-	if len(fields) != 2 {
+	if len(fields) == 1 {
+		reps, err := helper.ParseUint8(strings.TrimSpace(fields[0]))
+		if err != nil {
+			return set, fmt.Errorf("invalid reps format: %w", err)
+		}
+		set.Weight = 1
+		set.Reps = reps
+	} else if len(fields) == 2 {
+		weight, err := helper.ParseFloat32(strings.TrimSpace(fields[0]))
+		if err != nil {
+			return set, fmt.Errorf("invalid weight format: %w", err)
+		}
+
+		reps, err := helper.ParseUint8(strings.TrimSpace(fields[1]))
+		if err != nil {
+			return set, fmt.Errorf("invalid reps format: %w", err)
+		}
+
+		set.Weight = weight
+		set.Reps = reps
+	} else {
 		return set, errors.New("invalid set format")
-	}
-
-	var err error
-	set.Weight, err = helper.ParseFloat32(fields[0])
-	if err != nil {
-		return set, err
-	}
-
-	set.Reps, err = helper.ParseUint8(fields[1])
-	if err != nil {
-		return set, err
 	}
 
 	if strings.Contains(set.Notes, DifficultyEasy) {
