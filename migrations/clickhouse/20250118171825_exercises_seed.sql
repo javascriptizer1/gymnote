@@ -4,7 +4,7 @@ INSERT INTO exercises (id, name, muscle_group, equipment, created_at) VALUES
     (generateUUIDv4(), 'Тяга вертикального блока', 'Спина', 'Тренажер', now()),
     (generateUUIDv4(), 'Тяга штанги в наклоне', 'Спина', 'Штанга', now()),
     (generateUUIDv4(), 'Тяга гантели к поясу одной рукой', 'Спина', 'Гантели', now()),
-    (generateUUIDv4(), 'Тяга в Хаммере (на спину)', 'Спина', 'Хаммер', now()),
+    (generateUUIDv4(), 'Тяга в Хаммере (на спину)', 'Спина', 'Тренажер', now()),
     (generateUUIDv4(), 'Подъем штанги на бицепс', 'Руки', 'Штанга', now()),
     (generateUUIDv4(), 'Шраги с гантелями/гирями', 'Спина', 'Гантели', now()),
     (generateUUIDv4(), 'Верхняя тяга в тренажере', 'Спина', 'Тренажер', now()),
@@ -19,7 +19,7 @@ INSERT INTO exercises (id, name, muscle_group, equipment, created_at) VALUES
     (generateUUIDv4(), 'Сгибание рук на нижнем блоке', 'Руки', 'Тренажер', now()),
     (generateUUIDv4(), 'Подъем гантелей на бицепс с колен', 'Руки', 'Гантели', now()),
 
-    (generateUUIDv4(), 'Жим в Хаммере (горизонтальный)', 'Грудь', 'Хаммер', now()),
+    (generateUUIDv4(), 'Жим в Хаммере (горизонтальный)', 'Грудь', 'Тренажер', now()),
     (generateUUIDv4(), 'Жим штанги лежа', 'Грудь', 'Штанга', now()),
     (generateUUIDv4(), 'Жим штанги на наклонной скамье', 'Грудь', 'Штанга', now()),
     (generateUUIDv4(), 'Жим штанги в Смите', 'Грудь', 'Тренажер', now()),
@@ -34,7 +34,6 @@ INSERT INTO exercises (id, name, muscle_group, equipment, created_at) VALUES
     (generateUUIDv4(), 'Бабочка', 'Грудь', 'Тренажер', now()),
     (generateUUIDv4(), 'Отжимания на брусьях в тренажере', 'Руки', 'Тренажер', now()),
 
-    (generateUUIDv4(), 'Жим в Хаммере (горизонтальный)', 'Грудь', 'Хаммер', now()),
     (generateUUIDv4(), 'Жим гантелей на наклонной скамье', 'Грудь', 'Гантели', now()),
     (generateUUIDv4(), 'Отжимания на брусьях', 'Грудь', 'Собственный вес', now()),
     (generateUUIDv4(), 'Жим на грудь в тренажере', 'Грудь', 'Тренажер', now()),

@@ -1,6 +1,8 @@
 package chart
 
 import (
+	"log"
+
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/snapshot-chromedp/render"
@@ -43,11 +45,14 @@ func (c *chart) GenerateLinearChart(config LinearChartConfig) error {
 			}),
 		)
 
-	err := render.MakeSnapshot(render.NewSnapshotConfig(line.RenderContent(), config.FileName, func(config *render.SnapshotConfig) {
+	if err := render.MakeSnapshot(render.NewSnapshotConfig(line.RenderContent(), config.FileName, func(config *render.SnapshotConfig) {
 		config.MultiCharts = true
 		config.KeepHtml = true
 		config.Quality = 100
-	}))
+	})); err != nil {
+		log.Printf("Render chart error: %v\n", err)
+		return err
+	}
 
-	return err
+	return nil
 }
