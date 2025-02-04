@@ -90,6 +90,10 @@ jobs:
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod 600 /home/$VPS_USER/apps/gymnote/.env"
 
+      - name: Stop gymnote service on VPS
+        run: |
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service"
+      
       - name: Copy binary to VPS
         run: |
           go mod download

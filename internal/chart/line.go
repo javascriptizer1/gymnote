@@ -45,7 +45,7 @@ func (c *chart) GenerateLinearChart(config LinearChartConfig) error {
 
 	err := render.MakeSnapshot(render.NewSnapshotConfig(line.RenderContent(), config.FileName, func(config *render.SnapshotConfig) {
 		config.MultiCharts = true
-		config.KeepHtml = false
+		config.KeepHtml = true
 		config.Quality = 100
 	}))
 
