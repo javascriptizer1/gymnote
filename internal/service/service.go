@@ -107,6 +107,16 @@ func (s *service) GetExerciseProgression(ctx context.Context, userID string, exe
 	return s.db.GetExerciseProgression(ctx, userID, exerciseID, fromDate, toDate)
 }
 
+func (s *service) GetLastSetsForExercise(ctx context.Context, userID string, exerciseID uuid.UUID, limitDays int64) ([]entity.ExerciseProgression, error) {
+	result, err := s.db.GetLastSetsForExercise(ctx, userID, exerciseID, limitDays)
+	if err != nil {
+		log.Printf("Error get last sets for exercise %s for user for user '%s': %v\n", exerciseID.String(), userID, err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipment string) error {
 	_, err := s.db.GetExerciseByName(ctx, name)
 	if err == nil {
@@ -181,6 +191,26 @@ func (s *service) StartTraining(ctx context.Context, userID string) (*entity.Tra
 	}
 
 	return session, nil
+}
+
+func (s *service) DeleteExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error {
+	session, err := s.getSession(ctx, userID)
+	if err != nil {
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
+		return err
+	}
+
+	if err := session.DeleteLastExercise(exerciseID); err != nil {
+		log.Printf("Error deleting last occurrence of exercise '%s': %v\n", exerciseID, err)
+		return err
+	}
+
+	if err := s.cache.SaveSession(ctx, session); err != nil {
+		log.Printf("Error saving session after deleting exercise '%s': %v\n", exerciseID, err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *service) AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error {

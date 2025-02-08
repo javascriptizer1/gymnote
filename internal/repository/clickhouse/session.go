@@ -21,17 +21,15 @@ func (c *clickHouse) InsertTrainingSession(ctx context.Context, req entity.Train
 
 func (c *clickHouse) GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate time.Time) ([]entity.TrainingSession, error) {
 	var query string
-	var args []interface{}
 
 	query = `
 		SELECT id, user_id, session_id, session_date, exercise_id, exercise_name, exercise_number, set_number, weight, reps, difficulty, notes, muscle_group, created_at
 		FROM training_logs
 		WHERE user_id = ? AND session_date BETWEEN ? AND ?
 		ORDER BY session_date, exercise_number, set_number
-		`
-	args = append(args, userID, fromDate, toDate)
+	`
 
-	rows, err := c.conn.Query(ctx, query, args...)
+	rows, err := c.conn.Query(ctx, query, userID, fromDate, toDate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query training logs: %w", err)
 	}

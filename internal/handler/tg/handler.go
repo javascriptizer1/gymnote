@@ -3,6 +3,7 @@ package tg
 import (
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,8 +18,9 @@ import (
 )
 
 var (
-	pageSize  = 5
-	parseMode = tgbotapi.ModeMarkdown
+	daysForSetStatistics = int64(3)
+	pageSize             = 5
+	parseMode            = tgbotapi.ModeMarkdown
 )
 
 func (a *API) StartHandler(message *tgbotapi.Message) {
@@ -49,7 +51,7 @@ func (a *API) StartExerciseProgressionChartHandler(message *tgbotapi.Message) {
 
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
-		plainGroup := strings.TrimLeft(group, "💪🏋️🦵 ")
+		plainGroup := strings.TrimLeft(group, muscleGroupSmilePrefix)
 		button := tgbotapi.NewInlineKeyboardButtonData(group, musclePrefix+plainGroup)
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(button))
 	}
@@ -95,7 +97,7 @@ func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) 
 	var yValues []float32
 
 	for _, v := range data {
-		xValues = append(xValues, v.SessionDate.Format("2006-01-02"))
+		xValues = append(xValues, v.SessionDate.Format(time.DateOnly))
 		yValues = append(yValues, v.Weight)
 	}
 
@@ -106,7 +108,7 @@ func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) 
 		YName:    "Вес (кг)",
 		YValues:  yValues,
 		XValues:  xValues,
-		FileName: fmt.Sprintf("%s/%s-%s.png", a.cfg.GraphicsPath, userID, time.Now().Format("2006-01-02")),
+		FileName: fmt.Sprintf("%s/%s-%s.png", a.cfg.GraphicsPath, userID, time.Now().Format(time.DateOnly)),
 	}
 
 	if err = a.chartService.GenerateLinearChart(cfg); err != nil {
@@ -136,13 +138,13 @@ func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
 	args := strings.SplitN(message.Text, " ", 2)
 
 	if len(args) >= 1 {
-		from, err := time.Parse("2006-01-02", args[0])
+		from, err := time.Parse(time.DateOnly, args[0])
 		if err == nil {
 			fromDate = &from
 		}
 	}
 	if len(args) == 2 {
-		to, err := time.Parse("2006-01-02", args[1])
+		to, err := time.Parse(time.DateOnly, args[1])
 		if err == nil {
 			toDate = &to
 		}
@@ -265,7 +267,7 @@ func (a *API) StartTrainingHandler(message *tgbotapi.Message) {
 
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
-		plainGroup := strings.TrimLeft(group, "💪🏋️🦵 ")
+		plainGroup := strings.TrimLeft(group, muscleGroupSmilePrefix)
 		button := tgbotapi.NewInlineKeyboardButtonData(group, musclePrefix+plainGroup)
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(button))
 	}
@@ -283,15 +285,26 @@ func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 	userID := strconv.FormatInt(callback.From.ID, 10)
 	state := a.getUserState(userID)
 
-	muscleGroup, page, _, err := parseMuscleGroupCallbackData(callback.Data)
+	muscleGroup, page, _, cancelExerciseID, err := parseMuscleGroupCallbackData(callback.Data)
 	if err != nil {
-		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errGeneral))
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, err)))
 		return
+	}
+
+	if cancelExerciseID != uuid.Nil {
+		if err := a.trainingService.DeleteExercise(a.ctx, userID, cancelExerciseID); err != nil {
+			_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, err)))
+			return
+		}
 	}
 
 	exercises, err := a.trainingService.GetExercisesByMuscleGroup(a.ctx, muscleGroup)
 	if err != nil {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errExerciseLoad))
+		return
+	}
+	if len(exercises) == 0 {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, errNoExercises))
 		return
 	}
 
@@ -301,7 +314,7 @@ func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 		return
 	}
 
-	callbackDataPrefix := exercisePrefix
+	callbackDataPrefix := fmt.Sprintf("%s%s:", exercisePrefix, muscleGroup)
 	if state == entity.StateAwaitingExerciseProgression {
 		callbackDataPrefix = startGetExerciseProgressionPrefix
 	}
@@ -327,9 +340,33 @@ func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 		buttons = append(buttons, paginationButtons)
 	}
 
+	if page < totalPages-1 && len(paginationButtons) == 1 {
+		backButton := tgbotapi.NewInlineKeyboardButtonData(backToMuscleGroupsText, backToMuscleGroups)
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(backButton))
+	}
+
 	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, fmt.Sprintf(muscleGroupDoneText, muscleGroup))
 	editMsg.ParseMode = parseMode
 
+	editMarkup := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.NewInlineKeyboardMarkup(buttons...))
+
+	_, _ = a.bot.Send(editMsg)
+	_, _ = a.bot.Send(editMarkup)
+}
+
+func (a *API) BackToMuscleGroupsHandler(callback *tgbotapi.CallbackQuery) {
+	chatID := callback.Message.Chat.ID
+	messageID := callback.Message.MessageID
+
+	var buttons [][]tgbotapi.InlineKeyboardButton
+	for _, group := range muscleGroupsWithSmiles {
+		plainGroup := strings.TrimLeft(group, muscleGroupSmilePrefix)
+		button := tgbotapi.NewInlineKeyboardButtonData(group, musclePrefix+plainGroup)
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(button))
+	}
+
+	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, muscleGroupSelectText)
+	editMsg.ParseMode = parseMode
 	editMarkup := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.NewInlineKeyboardMarkup(buttons...))
 
 	_, _ = a.bot.Send(editMsg)
@@ -340,7 +377,16 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
 	userID := strconv.FormatInt(callback.From.ID, 10)
-	exerciseIDStr := strings.TrimPrefix(callback.Data, exercisePrefix)
+	text := strings.TrimPrefix(callback.Data, exercisePrefix)
+	args := strings.SplitN(text, ":", 2)
+
+	if len(args) != 2 {
+		msg := tgbotapi.NewMessage(chatID, errInternal)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	muscleGroup, exerciseIDStr := args[0], args[1]
 
 	exerciseID, err := uuid.Parse(exerciseIDStr)
 	if err != nil {
@@ -356,11 +402,32 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 		return
 	}
 
-	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, exerciseText)
+	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForSetStatistics)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, errInternal)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	lastSets := a.formatter.FormatLastSets(sets)
+
+	backButton := tgbotapi.NewInlineKeyboardButtonData(backToExercisesText, fmt.Sprintf("%s%s:%s:0:%s", musclePrefix, muscleGroup, nextDirection, exerciseIDStr))
+	buttons := [][]tgbotapi.InlineKeyboardButton{
+		{backButton},
+	}
+
+	msgText := exerciseText
+	if lastSets != "" {
+		msgText = fmt.Sprintf("%s\n\n%s", exerciseText, fmt.Sprintf(lastSetsText, lastSets))
+	}
+	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, msgText)
 	editMsg.ParseMode = parseMode
+
+	editMarkup := tgbotapi.NewEditMessageReplyMarkup(chatID, messageID, tgbotapi.NewInlineKeyboardMarkup(buttons...))
 
 	a.setUserState(userID, entity.StateAwaitingSetInput)
 	_, _ = a.bot.Send(editMsg)
+	_, _ = a.bot.Send(editMarkup)
 }
 
 func (a *API) SetHandler(message *tgbotapi.Message) {
@@ -417,7 +484,7 @@ func (a *API) StartNewExerciseHandler(callback *tgbotapi.CallbackQuery) {
 
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
-		plainGroup := strings.TrimLeft(group, "💪🏋️🦵 ")
+		plainGroup := strings.TrimLeft(group, muscleGroupSmilePrefix)
 		button := tgbotapi.NewInlineKeyboardButtonData(group, musclePrefix+plainGroup)
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(button))
 	}
@@ -450,11 +517,13 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	_, _ = a.bot.Send(editMsg)
 }
 
-func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, direction string, err error) {
+func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, direction string, exerciseID uuid.UUID, err error) {
 	parts := strings.Split(data, ":")
 
+	log.Println(parts)
+
 	if len(parts) < 2 {
-		return "", 0, "", fmt.Errorf("invalid callback format")
+		return "", 0, "", uuid.Nil, fmt.Errorf("invalid callback format")
 	}
 
 	muscleGroup = parts[1]
@@ -465,11 +534,19 @@ func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, di
 		direction = parts[2]
 		page, err = strconv.Atoi(parts[3])
 		if err != nil {
-			return "", 0, "", fmt.Errorf("invalid page number")
+			return "", 0, "", uuid.Nil, fmt.Errorf("invalid page number")
 		}
 	}
 
-	return muscleGroup, page, direction, nil
+	if len(parts) == 5 {
+		exerciseIDStr := parts[4]
+		exerciseID, err = uuid.Parse(exerciseIDStr)
+		if err != nil {
+			return "", 0, "", uuid.Nil, fmt.Errorf("invalid exercise id")
+		}
+	}
+
+	return muscleGroup, page, direction, exerciseID, nil
 }
 
 func paginate[T any](entities []T, page int, pageSize int) ([]T, int, error) {

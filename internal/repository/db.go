@@ -19,6 +19,7 @@ type DB interface {
 
 	InsertTrainingLogs(ctx context.Context, req entity.TrainingSession) error
 	GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID, fromDate, toDate time.Time) ([]entity.ExerciseProgression, error)
+	GetLastSetsForExercise(ctx context.Context, userID string, exerciseID uuid.UUID, limitDays int64) ([]entity.ExerciseProgression, error)
 	InsertTrainingSession(ctx context.Context, req entity.TrainingSession) error
 	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate time.Time) ([]entity.TrainingSession, error)
 }

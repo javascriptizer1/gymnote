@@ -19,6 +19,7 @@ type CallbackHandler func(*tgbotapi.CallbackQuery)
 
 type Formatter interface {
 	FormatTrainingLogs(sessions []entity.TrainingSession) string
+	FormatLastSets(sessions []entity.ExerciseProgression) string
 }
 type ChartService interface {
 	GenerateLinearChart(config chart.LinearChartConfig) error
@@ -27,6 +28,8 @@ type TrainingService interface {
 	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
 	GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID) ([]entity.ExerciseProgression, error)
 	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate *time.Time) ([]entity.TrainingSession, error)
+	GetLastSetsForExercise(ctx context.Context, userID string, exerciseID uuid.UUID, limitDays int64) ([]entity.ExerciseProgression, error)
+	DeleteExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error
 	CreateExercise(ctx context.Context, name string, muscleGroup string, equipment string) error
 	StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error
@@ -104,6 +107,7 @@ func (a *API) registerHandlers() {
 		finishTrainingPrefix:              a.FinishTrainingHandler,
 		startNewExercisePrefix:            a.StartNewExerciseHandler,
 		startGetExerciseProgressionPrefix: a.ExerciseProgressionChartHandler,
+		backToMuscleGroups:                a.BackToMuscleGroupsHandler,
 	}
 }
 

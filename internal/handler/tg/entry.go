@@ -10,23 +10,25 @@ import (
 )
 
 func (a *API) Register() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Recovering from panic: %v\nStack trace: %s", r, debug.Stack())
-		}
-	}()
-
 	for update := range a.bot.GetUpdatesChan(tgbotapi.UpdateConfig{}) {
-		switch {
-		case update.Message != nil && update.Message.IsCommand():
-			a.handleCommand(update.Message)
-		case update.Message != nil:
-			a.handleState(update.Message)
-		case update.CallbackQuery != nil:
-			a.handleCallbackQuery(update.CallbackQuery)
-		default:
-			log.Printf("Unknown update type: %+v\n", update)
-		}
+		go func(update tgbotapi.Update) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovering from panic: %v\nStack trace: %s", r, debug.Stack())
+				}
+			}()
+
+			switch {
+			case update.Message != nil && update.Message.IsCommand():
+				a.handleCommand(update.Message)
+			case update.Message != nil:
+				a.handleState(update.Message)
+			case update.CallbackQuery != nil:
+				a.handleCallbackQuery(update.CallbackQuery)
+			default:
+				log.Printf("Unknown update type: %+v\n", update)
+			}
+		}(update)
 	}
 }
 

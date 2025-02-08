@@ -1,9 +1,12 @@
 package entity
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
+
+	"gymnote/internal/errs"
 )
 
 type TrainingSessionOption func(o *TrainingSession)
@@ -63,6 +66,16 @@ func (ts *TrainingSession) ActiveExercise() *SessionExercise {
 		return nil
 	}
 	return &ts.exercises[len(ts.exercises)-1]
+}
+
+func (ts *TrainingSession) DeleteLastExercise(exerciseID uuid.UUID) error {
+	for i := len(ts.exercises) - 1; i >= 0; i-- {
+		if ts.exercises[i].Exercise.ID() == exerciseID {
+			ts.exercises = slices.Delete(ts.exercises, i, i+1)
+			return nil
+		}
+	}
+	return errs.ErrExerciseNotFound
 }
 
 func (ts *TrainingSession) CreatedAt() time.Time {

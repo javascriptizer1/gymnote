@@ -158,6 +158,6 @@ func (p *parser) parseSet(setData string) (Set, error) {
 }
 
 func (p *parser) isValidDate(dateStr string) (time.Time, bool) {
-	value, err := time.Parse("2006-01-02", dateStr)
+	value, err := time.Parse(time.DateOnly, dateStr)
 	return value, err == nil
 }
