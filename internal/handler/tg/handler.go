@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	maxTgMessageLength   = 4096
 	daysForSetStatistics = int64(3)
 	pageSize             = 5
 	parseMode            = tgbotapi.ModeMarkdown
@@ -161,7 +162,11 @@ func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
 	}
 
 	text := a.formatter.FormatTrainingLogs(trainings)
-	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, text))
+	chunks := splitMessage(text, maxTgMessageLength)
+
+	for _, chunk := range chunks {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, chunk))
+	}
 }
 
 func (a *API) UnknownCommandHandler(message *tgbotapi.Message) {
@@ -569,4 +574,25 @@ func paginate[T any](entities []T, page int, pageSize int) ([]T, int, error) {
 
 	pagedExercises := entities[start:end]
 	return pagedExercises, totalPages, nil
+}
+
+func splitMessage(text string, maxLen int) []string {
+	var chunks []string
+
+	for len(text) > maxLen {
+		splitAt := maxLen
+
+		if idx := strings.LastIndex(text[:splitAt], "\n"); idx > 0 {
+			splitAt = idx
+		}
+
+		chunks = append(chunks, text[:splitAt])
+		text = text[splitAt:]
+	}
+
+	if len(text) > 0 {
+		chunks = append(chunks, text)
+	}
+
+	return chunks
 }
