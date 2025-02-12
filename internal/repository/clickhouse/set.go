@@ -91,7 +91,7 @@ func (c *clickHouse) GetLastSetsForExercise(ctx context.Context, userID string, 
             ORDER BY session_date DESC
             LIMIT ?
         )
-        ORDER BY session_date DESC, created_at DESC
+        ORDER BY session_date ASC, set_number ASC
     `
 
 	rows, err := c.conn.Query(ctx, query, userID, exerciseID, userID, exerciseID, limitDays)

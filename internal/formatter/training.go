@@ -65,7 +65,7 @@ func (f *formatter) FormatLastSets(sets []entity.ExerciseProgression) string {
 
 		setStrings := []string{}
 		for _, set := range grouped[date] {
-			setStrings = append(setStrings, fmt.Sprintf("%.1f кг x %d", set.Weight, set.Reps))
+			setStrings = append(setStrings, fmt.Sprintf("%.1f x %d", set.Weight, set.Reps))
 		}
 
 		sb.WriteString(strings.Join(setStrings, "; ") + "\n\n")
