@@ -188,13 +188,13 @@ func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 
 	defer a.clearUserState(userID)
 
-	args := strings.SplitN(message.Text, " ", 3)
-	if len(args) < 3 {
+	lines := strings.Split(strings.TrimSpace(message.Text), "\n")
+	if len(lines) < 3 {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, startCreateExerciseText)))
 		return
 	}
 
-	name, muscleGroup, equipment := args[0], args[1], args[2]
+	name, muscleGroup, equipment := strings.TrimSpace(lines[0]), strings.TrimSpace(lines[1]), strings.TrimSpace(lines[2])
 	if name == "" {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, fmt.Sprintf(errGeneral, emptyExerciseNameText)))
 		return

@@ -54,6 +54,7 @@ INSERT INTO exercises (id, name, muscle_group, equipment, created_at) VALUES
 
     (generateUUIDv4(), 'Жим гантелей сидя', 'Плечи', 'Гантели', now()),
     (generateUUIDv4(), 'Тяга штанги к подбородку', 'Плечи', 'Штанга', now()),
+    (generateUUIDv4(), 'Отведение руки в сторону в кроссовере (средняя)', 'Плечи', 'Тренажер', now()),
     (generateUUIDv4(), 'Разгибание ног в тренажере', 'Ноги', 'Тренажер', now()),
     (generateUUIDv4(), 'Сгибание ног в тренажере', 'Ноги', 'Тренажер', now()),
     (generateUUIDv4(), 'Разведение ног в тренажере', 'Ноги', 'Тренажер', now()),
