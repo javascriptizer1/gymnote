@@ -3,7 +3,6 @@ package tg
 import (
 	"errors"
 	"fmt"
-	"log"
 	"slices"
 	"strconv"
 	"strings"
@@ -524,8 +523,6 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 
 func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, direction string, exerciseID uuid.UUID, err error) {
 	parts := strings.Split(data, ":")
-
-	log.Println(parts)
 
 	if len(parts) < 2 {
 		return "", 0, "", uuid.Nil, fmt.Errorf("invalid callback format")
