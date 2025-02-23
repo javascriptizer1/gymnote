@@ -24,7 +24,7 @@ func New(ctx context.Context, cfg *config.DBConfig) (*clickHouse, error) {
 			Username: cfg.User,
 			Password: cfg.Password,
 		},
-		Debugf: func(format string, v ...interface{}) {
+		Debugf: func(format string, v ...any) {
 			log.Printf(format, v)
 		},
 	})
