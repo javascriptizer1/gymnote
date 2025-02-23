@@ -105,7 +105,7 @@ jobs:
       - name: Copy scripts folder to VPS
         run: |
           scp -i deploy_key.pem -o StrictHostKeyChecking=no -r ./tools/scripts $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/tools/scripts
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/tools/scripts/*.sh"
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/tools/scripts/*.sh"
 
       - name: Stop gymnote service on VPS
         run: |
