@@ -26,7 +26,7 @@ services:
       - backup
     environment:
       - LOG_LEVEL=info
-      - CLICKHOUSE_HOST=host.docker.internal
+      - CLICKHOUSE_HOST=host.docker.internal # hostname - bot
       - CLICKHOUSE_PORT=${DB_PORT}
       - CLICKHOUSE_USERNAME=${DB_USER}
       - CLICKHOUSE_PASSWORD=${DB_PASSWORD}
@@ -39,8 +39,9 @@ services:
       - S3_FORCE_PATH_STYLE=true
       - S3_ACL=private
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
       - ./tools/scripts:/scripts
+    volumes_from:
+      - clickhouse:rw
     restart: no
     command:
       - sh

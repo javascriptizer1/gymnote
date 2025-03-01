@@ -177,6 +177,11 @@ func (a *API) StartCreateExerciseHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
 	userID := strconv.FormatInt(message.From.ID, 10)
 
+	if a.cfg.AuthorName != "" && message.From.UserName != a.cfg.AuthorName {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, adminOnlyText))
+		return
+	}
+
 	a.setUserState(userID, entity.StateAwaitingExerciseInput)
 	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startCreateExerciseText))
 }
