@@ -16,7 +16,7 @@ GymNote is a **Telegram bot** designed to help users track their workout progres
 ## Tech Stack ⚙️
 
 - **Language**: Go (Golang)
-- **Database**: Clickhouse
+- **Database**: ~~Clickhouse~~ Mongo
 - **Cache**: Redis
 - **Messaging API**: Telegram Bot API
 - **Hosting**: Deployed on VPS
@@ -45,7 +45,7 @@ cp .env.example .env
 make docker-up
 ```
 
-3. **Run migrations**
+3. **Run migrations** (deprecated)
 
 ```bash
 make migrate-up

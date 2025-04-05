@@ -42,6 +42,6 @@ func New(ctx context.Context, cfg *config.DBConfig) (*clickHouse, error) {
 	return &clickHouse{conn: conn, cfg: cfg}, nil
 }
 
-func (c *clickHouse) Close() {
-	c.conn.Close()
+func (c *clickHouse) Close(_ context.Context) error {
+	return c.conn.Close()
 }

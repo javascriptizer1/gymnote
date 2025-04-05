@@ -10,7 +10,7 @@ import (
 )
 
 type DB interface {
-	Close()
+	Close(context.Context) error
 
 	InsertExercise(ctx context.Context, req entity.Exercise) error
 	GetExerciseByName(ctx context.Context, req string) (entity.Exercise, error)

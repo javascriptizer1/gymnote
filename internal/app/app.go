@@ -15,7 +15,7 @@ import (
 	"gymnote/internal/handler/tg"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
-	"gymnote/internal/repository/clickhouse"
+	mongodb "gymnote/internal/repository/mongo"
 	"gymnote/internal/repository/redis"
 	"gymnote/internal/service"
 )
@@ -76,7 +76,7 @@ func (a *app) initConfig() error {
 }
 
 func (a *app) initDB() error {
-	db, err := clickhouse.New(a.ctx, &a.cfg.DB)
+	db, err := mongodb.New(a.ctx, &a.cfg.DB)
 	if err != nil {
 		return fmt.Errorf("init db error: %w", err)
 	}
@@ -110,7 +110,9 @@ func (a *app) Run() error {
 }
 
 func (a *app) shutdown() {
-	a.db.Close()
+	if err := a.db.Close(a.ctx); err != nil {
+		log.Printf("db close err: %v\n", err)
+	}
 }
 
 func (a *app) runServer() error {
