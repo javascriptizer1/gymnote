@@ -18,7 +18,7 @@ type Config struct {
 
 type DBConfig struct {
 	Host     string `env:"DB_HOST" env-required:"true"`
-	Port     string `env:"DB_PORT" env-required:"true"`
+	Port     string `env:"DB_PORT" env-required:"false"`
 	User     string `env:"DB_USER" env-required:"true"`
 	Password string `env:"DB_PASSWORD" env-required:"true"`
 	Name     string `env:"DB_NAME" env-required:"true"`

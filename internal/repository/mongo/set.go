@@ -116,12 +116,66 @@ func (m *mongodb) GetLastSetsForExercise(ctx context.Context, userID string, exe
 			{Key: "exercise_id", Value: exerciseID.String()},
 		}}},
 
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$session_date"},
+		}}},
+
 		{{Key: "$sort", Value: bson.D{
-			{Key: "session_date", Value: -1},
-			{Key: "set_number", Value: 1},
+			{Key: "_id", Value: -1},
 		}}},
 
 		{{Key: "$limit", Value: limitDays}},
+
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: nil},
+			{Key: "dates", Value: bson.D{
+				{Key: "$push", Value: "$_id"},
+			}},
+		}}},
+
+		{{Key: "$lookup", Value: bson.D{
+			{Key: "from", Value: m.logColl.Name()},
+
+			{Key: "let", Value: bson.D{
+				{Key: "dates", Value: "$dates"},
+				{Key: "user_id", Value: userID},
+				{Key: "exercise_id", Value: exerciseID.String()},
+			}},
+
+			{Key: "pipeline", Value: mongo.Pipeline{
+
+				{{Key: "$match", Value: bson.D{
+
+					{Key: "$expr", Value: bson.D{
+
+						{Key: "$and", Value: bson.A{
+							bson.D{{Key: "$eq", Value: bson.A{"$user_id", "$$user_id"}}},
+							bson.D{{Key: "$eq", Value: bson.A{"$exercise_id", "$$exercise_id"}}},
+							bson.D{{Key: "$in", Value: bson.A{"$session_date", "$$dates"}}},
+						}},
+					}},
+				}}},
+
+				{{Key: "$sort", Value: bson.D{
+					{Key: "session_date", Value: 1},
+					{Key: "set_number", Value: 1},
+				}}},
+			}},
+
+			{Key: "as", Value: "logs"},
+		}}},
+
+		{{Key: "$unwind", Value: "$logs"}},
+
+		{{Key: "$replaceRoot", Value: bson.D{
+			{Key: "newRoot", Value: "$logs"},
+		}}},
+
+		{{Key: "$project", Value: bson.D{
+			{Key: "session_date", Value: 1},
+			{Key: "weight", Value: 1},
+			{Key: "reps", Value: 1},
+		}}},
 	}
 
 	cursor, err := m.logColl.Aggregate(ctx, pipeline)
