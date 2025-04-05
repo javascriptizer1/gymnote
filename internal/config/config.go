@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -21,6 +22,19 @@ type DBConfig struct {
 	User     string `env:"DB_USER" env-required:"true"`
 	Password string `env:"DB_PASSWORD" env-required:"true"`
 	Name     string `env:"DB_NAME" env-required:"true"`
+}
+
+func (c *DBConfig) ConnectionString() string {
+	var uri string
+	appName := "Gymnote"
+
+	if c.Port == "" {
+		uri = fmt.Sprintf("mongodb+srv://%s:%s@%s/?appName=%s", c.User, c.Password, c.Host, appName)
+	} else {
+		uri = fmt.Sprintf("mongodb://%s:%s@%s:%s/?appName=%s", c.User, c.Password, c.Host, c.Port, appName)
+	}
+
+	return uri
 }
 
 type CacheConfig struct {

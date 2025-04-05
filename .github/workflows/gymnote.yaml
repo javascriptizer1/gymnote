@@ -102,11 +102,6 @@ jobs:
             done
           EOF
 
-      - name: Copy scripts folder to VPS
-        run: |
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r ./tools/scripts $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/tools/scripts
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/tools/scripts/*.sh"
-
       - name: Stop gymnote service on VPS
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service"
@@ -117,20 +112,6 @@ jobs:
           go build -o ./bin ./cmd/gymnote/main.go
           scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
-
-      - name: Copy migrations to VPS
-        run: |
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r migrations $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/migrations
-
-      - name: Run database migrations
-        run: |
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
-            export GOOSE_DRIVER=clickhouse
-            export GOOSE_DBSTRING="tcp://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
-            set -e
-            cd /home/$VPS_USER/apps/gymnote || exit 1
-            goose -dir ./migrations/clickhouse up || exit 1
-          EOF
 
       - name: Set up systemd service on VPS
         run: |

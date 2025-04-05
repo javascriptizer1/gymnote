@@ -17,6 +17,7 @@ import (
 
 type Parser interface {
 	ParseExercises(s string) ([]parser.Exercise, time.Time, error)
+	ParseDifficulty(notes string) string
 }
 
 type service struct {
@@ -246,6 +247,7 @@ func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight floa
 		lastSet.SetWeight(weight)
 		lastSet.SetReps(reps)
 		lastSet.SetNotes(notes)
+		lastSet.SetDifficulty(s.parser.ParseDifficulty(notes))
 		return s.cache.SaveSession(ctx, session)
 	}
 
@@ -257,6 +259,7 @@ func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight floa
 			Weight:     weight,
 			Reps:       reps,
 			Notes:      notes,
+			Difficulty: s.parser.ParseDifficulty(notes),
 		},
 	))
 

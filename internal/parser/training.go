@@ -144,17 +144,25 @@ func (p *parser) parseSet(setData string) (Set, error) {
 		return set, errors.New("invalid set format")
 	}
 
-	if strings.Contains(set.Notes, DifficultyEasy) {
-		set.Difficulty = DifficultyEasy
-	} else if strings.Contains(set.Notes, DifficultyMedium) {
-		set.Difficulty = DifficultyMedium
-	} else if strings.Contains(set.Notes, DifficultyHard) {
-		set.Difficulty = DifficultyHard
-	} else {
-		set.Difficulty = "-"
-	}
+	set.Difficulty = p.ParseDifficulty(set.Notes)
 
 	return set, nil
+}
+
+func (p *parser) ParseDifficulty(notes string) string {
+	var difficulty string
+
+	if strings.Contains(notes, DifficultyEasy) {
+		difficulty = DifficultyEasy
+	} else if strings.Contains(notes, DifficultyMedium) {
+		difficulty = DifficultyMedium
+	} else if strings.Contains(notes, DifficultyHard) {
+		difficulty = DifficultyHard
+	} else {
+		difficulty = "-"
+	}
+
+	return difficulty
 }
 
 func (p *parser) isValidDate(dateStr string) (time.Time, bool) {
