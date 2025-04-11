@@ -194,7 +194,7 @@ func (m *mongodb) GetLastSetsForExercise(ctx context.Context, userID string, exe
 	for cursor.Next(ctx) {
 		var log struct {
 			SessionDate time.Time `bson:"session_date"`
-			Weight      float32   `bson:"weight"`
+			Weight      float64   `bson:"weight"`
 			Reps        uint8     `bson:"reps"`
 		}
 
@@ -204,7 +204,7 @@ func (m *mongodb) GetLastSetsForExercise(ctx context.Context, userID string, exe
 
 		result = append(result, entity.ExerciseProgression{
 			SessionDate: log.SessionDate,
-			Weight:      log.Weight,
+			Weight:      float32(log.Weight),
 			Reps:        log.Reps,
 		})
 	}
