@@ -152,11 +152,13 @@ func (p *parser) parseSet(setData string) (Set, error) {
 func (p *parser) ParseDifficulty(notes string) string {
 	var difficulty string
 
-	if strings.Contains(notes, DifficultyEasy) {
+	n := strings.ToLower(notes)
+
+	if strings.Contains(n, DifficultyEasy) {
 		difficulty = DifficultyEasy
-	} else if strings.Contains(notes, DifficultyMedium) {
+	} else if strings.Contains(n, DifficultyMedium) {
 		difficulty = DifficultyMedium
-	} else if strings.Contains(notes, DifficultyHard) {
+	} else if strings.Contains(n, DifficultyHard) {
 		difficulty = DifficultyHard
 	} else {
 		difficulty = "-"
