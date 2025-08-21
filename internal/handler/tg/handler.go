@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	maxTgMessageLength   = 4096
-	daysForSetStatistics = int64(3)
-	pageSize             = 5
-	parseMode            = tgbotapi.ModeMarkdown
+	maxTgMessageLength     = 4096
+	daysForSetStatistics   = int64(3)
+	daysForExerciseHistory = int64(20)
+	pageSize               = 5
+	parseMode              = tgbotapi.ModeMarkdown
 )
 
 func (a *API) StartHandler(message *tgbotapi.Message) {
@@ -118,6 +119,63 @@ func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) 
 
 	chartImage := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(cfg.FileName))
 	_, _ = a.bot.Send(chartImage)
+}
+
+func (a *API) StartExerciseHistoryHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	var buttons [][]tgbotapi.InlineKeyboardButton
+	for _, group := range muscleGroupsWithSmiles {
+		plainGroup := strings.TrimLeft(group, muscleGroupSmilePrefix)
+		button := tgbotapi.NewInlineKeyboardButtonData(group, musclePrefix+plainGroup)
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardRow(button))
+	}
+
+	msg := tgbotapi.NewMessage(chatID, startExerciseHistoryMuscleGroupSelectText)
+	msg.ParseMode = parseMode
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(buttons...)
+
+	a.setUserState(userID, entity.StateAwaitingExerciseHistory)
+
+	_, _ = a.bot.Send(msg)
+}
+
+func (a *API) ExerciseHistoryHandler(callback *tgbotapi.CallbackQuery) {
+	chatID := callback.Message.Chat.ID
+	userID := strconv.FormatInt(callback.From.ID, 10)
+	messageID := callback.Message.MessageID
+	exerciseIDStr := strings.TrimPrefix(callback.Data, startGetExerciseHistoryPrefix)
+
+	defer a.clearUserState(userID)
+
+	exerciseID, err := uuid.Parse(exerciseIDStr)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, errInvalidExerciseID)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForExerciseHistory)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, errInternal)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	if len(sets) == 0 {
+		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, notFoundTrainingsText))
+		return
+	}
+
+	lastSets := a.formatter.FormatLastSets(sets)
+
+	msgText := fmt.Sprintf(lastSetsText, lastSets)
+
+	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, msgText)
+	editMsg.ParseMode = parseMode
+
+	_, _ = a.bot.Send(editMsg)
 }
 
 func (a *API) StartGetTrainingsHandler(message *tgbotapi.Message) {
@@ -324,8 +382,11 @@ func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 	}
 
 	callbackDataPrefix := fmt.Sprintf("%s%s:", exercisePrefix, muscleGroup)
-	if state == entity.StateAwaitingExerciseProgression {
+	switch state {
+	case entity.StateAwaitingExerciseProgression:
 		callbackDataPrefix = startGetExerciseProgressionPrefix
+	case entity.StateAwaitingExerciseHistory:
+		callbackDataPrefix = startGetExerciseHistoryPrefix
 	}
 
 	var buttons [][]tgbotapi.InlineKeyboardButton

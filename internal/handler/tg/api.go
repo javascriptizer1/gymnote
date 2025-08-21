@@ -92,6 +92,7 @@ func (a *API) registerHandlers() {
 		uploadTrainingCommand:         a.StartUploadTrainingHandler,
 		getTrainingsCommand:           a.StartGetTrainingsHandler,
 		getExerciseProgressionCommand: a.StartExerciseProgressionChartHandler,
+		getExerciseHistoryCommand:     a.StartExerciseHistoryHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
@@ -107,6 +108,7 @@ func (a *API) registerHandlers() {
 		finishTrainingPrefix:              a.FinishTrainingHandler,
 		startNewExercisePrefix:            a.StartNewExerciseHandler,
 		startGetExerciseProgressionPrefix: a.ExerciseProgressionChartHandler,
+		startGetExerciseHistoryPrefix:     a.ExerciseHistoryHandler,
 		backToMuscleGroups:                a.BackToMuscleGroupsHandler,
 	}
 }
@@ -118,13 +120,13 @@ func (a *API) setBotCommands() {
 		{Command: uploadTrainingCommand, Description: "Загрузить тренировку"},
 		{Command: getTrainingsCommand, Description: "Посмотреть историю тренировок"},
 		{Command: getExerciseProgressionCommand, Description: "Посмотреть прогрессию весов по упражнению"},
+		{Command: getExerciseHistoryCommand, Description: "Посмотреть историю конкретного упражнения"},
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},
 		{Command: helpCommand, Description: "Помощь и команды"},
 	}
 
-	_, err := a.bot.Request(tgbotapi.NewSetMyCommands(commands...))
-	if err != nil {
+	if _, err := a.bot.Request(tgbotapi.NewSetMyCommands(commands...)); err != nil {
 		log.Printf("Set commands error %v", err)
 	}
 }
