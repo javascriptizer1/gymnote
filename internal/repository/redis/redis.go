@@ -32,3 +32,7 @@ func New(ctx context.Context, cfg *config.CacheConfig) (*cache, error) {
 
 	return &cache{redisClient: client, cfg: cfg}, nil
 }
+
+func (c *cache) Close(_ context.Context) error {
+	return c.redisClient.Close()
+}

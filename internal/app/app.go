@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"gymnote/internal/chart"
 	"gymnote/internal/config"
@@ -105,41 +104,42 @@ func (a *app) initServices() error {
 }
 
 func (a *app) Run() error {
-	defer a.shutdown()
-	return a.runServer()
+	go a.api.Register()
+
+	log.Println("Server is running...")
+
+	waitSignalAndShutdown(a.cancelCtx)
+
+	ctx, cancel := context.WithTimeout(context.Background(), a.cfg.GracefulTimeout)
+	defer cancel()
+
+	return a.shutdown(ctx)
 }
 
-func (a *app) shutdown() {
-	if err := a.db.Close(a.ctx); err != nil {
+func (a *app) shutdown(ctx context.Context) error {
+	if err := a.db.Close(ctx); err != nil {
 		log.Printf("db close err: %v\n", err)
 	}
-}
 
-func (a *app) runServer() error {
-	a.api.Register()
+	if err := a.cache.Close(ctx); err != nil {
+		log.Printf("cache close err: %v\n", err)
+	}
 
-	waitGracefulShutdown(a.cancelCtx, a.cfg.GracefulTimeout)
+	log.Println("Shutdown complete")
 
 	return nil
 }
 
-func waitGracefulShutdown(cancel context.CancelFunc, timeout time.Duration) {
+func waitSignalAndShutdown(cancelApp context.CancelFunc) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(
 		quit,
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGHUP, os.Interrupt,
 	)
 
-	log.Printf("Caught signal %s. Shutting down...\n", <-quit)
+	sig := <-quit
 
-	done := make(chan struct{})
-	go func() {
-		cancel()
-		done <- struct{}{}
-	}()
+	log.Printf("Caught signal %s. Shutting down...\n", sig)
 
-	select {
-	case <-time.After(timeout):
-	case <-done:
-	}
+	cancelApp()
 }
