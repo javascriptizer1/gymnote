@@ -17,6 +17,7 @@ type Set struct {
 	reps       uint8
 	difficulty string
 	notes      string
+	messageID  int
 	createdAt  time.Time
 }
 
@@ -52,6 +53,10 @@ func (s *Set) Notes() string {
 	return s.notes
 }
 
+func (s *Set) MessageID() int {
+	return s.messageID
+}
+
 func (s *Set) CreatedAt() time.Time {
 	return s.createdAt
 }
@@ -76,6 +81,10 @@ func (s *Set) SetDifficulty(difficulty string) {
 	}
 }
 
+func (s *Set) SetMessageID(messageID int) {
+	s.messageID = messageID
+}
+
 func NewSet(opts ...SetOption) *Set {
 	set := &Set{}
 
@@ -94,6 +103,7 @@ type SetInitSpecification struct {
 	Reps       uint8
 	Difficulty string
 	Notes      string
+	MessageID  int
 }
 
 func WithSetInitSpec(s SetInitSpecification) SetOption {
@@ -106,6 +116,7 @@ func WithSetInitSpec(s SetInitSpecification) SetOption {
 		o.reps = s.Reps
 		o.difficulty = s.Difficulty
 		o.notes = s.Notes
+		o.messageID = s.MessageID
 		o.createdAt = time.Now()
 	}
 }
@@ -120,6 +131,7 @@ type SetRestoreSpecification struct {
 	Difficulty string
 	Notes      string
 	CreatedAt  time.Time
+	MessageID  int
 }
 
 func WithSetRestoreSpec(s SetRestoreSpecification) SetOption {
@@ -133,5 +145,6 @@ func WithSetRestoreSpec(s SetRestoreSpecification) SetOption {
 		o.difficulty = s.Difficulty
 		o.notes = s.Notes
 		o.createdAt = s.CreatedAt
+		o.messageID = s.MessageID
 	}
 }

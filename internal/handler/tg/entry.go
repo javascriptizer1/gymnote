@@ -19,6 +19,8 @@ func (a *API) Register() {
 			}()
 
 			switch {
+			case update.EditedMessage != nil:
+				a.handleEditedMessage(update.EditedMessage)
 			case update.Message != nil && update.Message.IsCommand():
 				a.handleCommand(update.Message)
 			case update.Message != nil:
@@ -60,4 +62,35 @@ func (a *API) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	}
 
 	a.UnknownCommandHandler(callback.Message)
+}
+
+func (a *API) handleEditedMessage(message *tgbotapi.Message) {
+	if message == nil || message.From == nil {
+		return
+	}
+
+	userID := strconv.FormatInt(message.From.ID, 10)
+	input := message.Text
+	if input == "" {
+		return
+	}
+
+	parts := strings.SplitN(input, "\n", 2)
+	setData := strings.Split(parts[0], ",")
+	if len(setData) != 2 {
+		return
+	}
+
+	weight, errWeight := strconv.ParseFloat(setData[0], 64)
+	reps, errReps := strconv.Atoi(setData[1])
+	if errWeight != nil || errReps != nil {
+		return
+	}
+
+	var notes string
+	if len(parts) > 1 {
+		notes = strings.TrimSpace(parts[1])
+	}
+
+	_ = a.trainingService.UpdateSetFromMessage(a.ctx, userID, message.MessageID, float32(weight), uint8(reps), notes)
 }

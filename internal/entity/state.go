@@ -10,4 +10,5 @@ const (
 	StateAwaitingGetTrainingsInput   UserState = "awaiting_get_trainings_input"
 	StateAwaitingExerciseProgression UserState = "awaiting_exercise_progression"
 	StateAwaitingExerciseHistory     UserState = "awaiting_exercise_history"
+	StateAwaitingOneRMInput          UserState = "awaiting_one_rm_input"
 )

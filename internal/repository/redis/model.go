@@ -106,6 +106,7 @@ type SetRow struct {
 	Reps       uint8     `json:"reps"`
 	Difficulty string    `json:"difficulty"`
 	Notes      string    `json:"notes"`
+	MessageID  int       `json:"message_id"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -120,6 +121,7 @@ func (s *SetRow) ToEntity() *entity.Set {
 		Difficulty: s.Difficulty,
 		Notes:      s.Notes,
 		CreatedAt:  s.CreatedAt,
+		MessageID:  s.MessageID,
 	}))
 }
 
@@ -133,6 +135,7 @@ func NewSetRow(set *entity.Set) *SetRow {
 		Reps:       set.Reps(),
 		Difficulty: set.Difficulty(),
 		Notes:      set.Notes(),
+		MessageID:  set.MessageID(),
 		CreatedAt:  set.CreatedAt(),
 	}
 }

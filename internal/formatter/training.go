@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession) string
 			setStrings := []string{}
 
 			for _, set := range ex.Sets() {
-				setStr := fmt.Sprintf("%.1f,%d", set.Weight(), set.Reps())
+				setStr := fmt.Sprintf("%s,%d", formatWeight(set.Weight()), set.Reps())
 				if set.Notes() != "" {
 					setStr += fmt.Sprintf(" (%s)", set.Notes())
 				}
@@ -38,6 +39,18 @@ func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession) string
 	}
 
 	return sb.String()
+}
+
+func FormatWeightFloat(v float64) string {
+	if math.Mod(v, 1) == 0 {
+		return fmt.Sprintf("%.0f", v)
+	}
+
+	return fmt.Sprintf("%.1f", v)
+}
+
+func formatWeight(weight float32) string {
+	return FormatWeightFloat(float64(weight))
 }
 
 func (f *formatter) FormatLastSets(sets []entity.ExerciseProgression) string {
@@ -65,7 +78,7 @@ func (f *formatter) FormatLastSets(sets []entity.ExerciseProgression) string {
 
 		setStrings := []string{}
 		for _, set := range grouped[date] {
-			setStrings = append(setStrings, fmt.Sprintf("%.1f x %d", set.Weight, set.Reps))
+			setStrings = append(setStrings, fmt.Sprintf("%s x %d", formatWeight(set.Weight), set.Reps))
 		}
 
 		sb.WriteString(strings.Join(setStrings, "; ") + "\n\n")

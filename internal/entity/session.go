@@ -68,6 +68,22 @@ func (ts *TrainingSession) ActiveExercise() *SessionExercise {
 	return &ts.exercises[len(ts.exercises)-1]
 }
 
+func (ts *TrainingSession) FindSetByMessageID(messageID int) *Set {
+	if messageID == 0 {
+		return nil
+	}
+
+	for i := range ts.exercises {
+		for j := range ts.exercises[i].sets {
+			if ts.exercises[i].sets[j].MessageID() == messageID {
+				return &ts.exercises[i].sets[j]
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ts *TrainingSession) DeleteLastExercise(exerciseID uuid.UUID) error {
 	for i := len(ts.exercises) - 1; i >= 0; i-- {
 		if ts.exercises[i].Exercise.ID() == exerciseID {

@@ -33,11 +33,12 @@ type TrainingService interface {
 	CreateExercise(ctx context.Context, name string, muscleGroup string, equipment string) error
 	StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	AddTrainingExercise(ctx context.Context, userID string, exerciseID uuid.UUID) error
-	AddOrUpdateSet(ctx context.Context, userID string, weight float32, reps uint8, notes string) error
+	AddOrUpdateSet(ctx context.Context, userID string, messageID int, weight float32, reps uint8, notes string) error
 	EndSession(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	GetCurrentSession(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	ClearSession(ctx context.Context, userID string) error
 	GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error)
+	UpdateSetFromMessage(ctx context.Context, userID string, messageID int, weight float32, reps uint8, notes string) error
 }
 
 type API struct {
@@ -93,6 +94,7 @@ func (a *API) registerHandlers() {
 		getTrainingsCommand:           a.StartGetTrainingsHandler,
 		getExerciseProgressionCommand: a.StartExerciseProgressionChartHandler,
 		getExerciseHistoryCommand:     a.StartExerciseHistoryHandler,
+		oneRMCommand:                  a.StartOneRMHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
@@ -100,6 +102,7 @@ func (a *API) registerHandlers() {
 		entity.StateAwaitingExerciseInput:     a.CreateExerciseHandler,
 		entity.StateAwaitingTrainingInput:     a.UploadTrainingHandler,
 		entity.StateAwaitingGetTrainingsInput: a.GetTrainingsHandler,
+		entity.StateAwaitingOneRMInput:        a.OneRMHandler,
 	}
 
 	a.callbackHandlers = map[string]CallbackHandler{
@@ -123,6 +126,7 @@ func (a *API) setBotCommands() {
 		{Command: getExerciseHistoryCommand, Description: "Посмотреть историю конкретного упражнения"},
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},
+		{Command: oneRMCommand, Description: "Рассчитать одноповторный максимум"},
 		{Command: helpCommand, Description: "Помощь и команды"},
 	}
 

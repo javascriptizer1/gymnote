@@ -31,3 +31,5 @@ go.work.sum
 graphs
 # Env
 .env
+
+node_modules

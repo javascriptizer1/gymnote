@@ -14,6 +14,8 @@ import (
 	"gymnote/internal/chart"
 	"gymnote/internal/entity"
 	"gymnote/internal/errs"
+	"gymnote/internal/formatter"
+	"gymnote/internal/onerm"
 )
 
 var (
@@ -43,6 +45,79 @@ func (a *API) StartHandler(message *tgbotapi.Message) {
 
 func (a *API) HelpHandler(message *tgbotapi.Message) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, helpText)
+	_, _ = a.bot.Send(msg)
+}
+
+func (a *API) OneRMHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+	defer a.clearUserState(userID)
+
+	input := strings.TrimSpace(message.Text)
+	parts := strings.SplitN(input, "\n", 2)
+	setData := strings.Split(parts[0], ",")
+	if len(setData) != 2 {
+		msg := tgbotapi.NewMessage(chatID, errInvalidFormat)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	weight, errWeight := strconv.ParseFloat(strings.TrimSpace(setData[0]), 64)
+	reps, errReps := strconv.Atoi(strings.TrimSpace(setData[1]))
+	if errWeight != nil || errReps != nil || weight <= 0 || reps <= 0 {
+		msg := tgbotapi.NewMessage(chatID, errParseData)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	summary := onerm.Calculate(weight, reps)
+	if len(summary.Results) == 0 || summary.Average <= 0 {
+		msg := tgbotapi.NewMessage(chatID, errGeneral)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
+	formulaNames := map[onerm.Formula]string{
+		onerm.FormulaEpley:    "Эпли",
+		onerm.FormulaBrzycki:  "Бжицки",
+		onerm.FormulaLander:   "Лэндер",
+		onerm.FormulaLombardi: "Ломбарди",
+		onerm.FormulaMayhew:   "Мэйхью",
+		onerm.FormulaOConner:  "О'Коннор",
+		onerm.FormulaWathan:   "Ватан",
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📈 Расчёт одноповторного максимума\n\n")
+	sb.WriteString(fmt.Sprintf("Исходные данные: %s кг x %d\n\n", formatter.FormatWeightFloat(weight), reps))
+	sb.WriteString("Формулы:\n\n")
+	for _, r := range summary.Results {
+		name := formulaNames[r.Formula]
+		if name == "" {
+			name = string(r.Formula)
+		}
+		sb.WriteString(fmt.Sprintf("• *%s*: %s кг\n", name, formatter.FormatWeightFloat(r.Value)))
+	}
+
+	sb.WriteString(fmt.Sprintf("\nСредний 1ПМ: %s кг\n\n", formatter.FormatWeightFloat(summary.Average)))
+	sb.WriteString("Проценты от 1ПМ:\n")
+	percentages := []int{50, 60, 70, 75, 80, 85, 90, 95, 100}
+	for _, p := range percentages {
+		val := summary.Average * float64(p) / 100
+		sb.WriteString(fmt.Sprintf("• %d%%: %s кг\n", p, formatter.FormatWeightFloat(val)))
+	}
+
+	msg := tgbotapi.NewMessage(chatID, sb.String())
+	msg.ParseMode = parseMode
+	_, _ = a.bot.Send(msg)
+}
+
+func (a *API) StartOneRMHandler(message *tgbotapi.Message) {
+	chatID := message.Chat.ID
+	userID := strconv.FormatInt(message.From.ID, 10)
+
+	a.setUserState(userID, entity.StateAwaitingOneRMInput)
+	msg := tgbotapi.NewMessage(chatID, startOneRMText)
 	_, _ = a.bot.Send(msg)
 }
 
@@ -524,7 +599,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 		notes = strings.TrimSpace(parts[1])
 	}
 
-	err := a.trainingService.AddOrUpdateSet(a.ctx, userID, float32(weight), uint8(reps), notes)
+	err := a.trainingService.AddOrUpdateSet(a.ctx, userID, message.MessageID, float32(weight), uint8(reps), notes)
 	if err != nil {
 		msg := tgbotapi.NewMessage(message.Chat.ID, fmt.Sprintf(errGeneral, err))
 		_, _ = a.bot.Send(msg)
@@ -585,6 +660,14 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	editMsg.ParseMode = parseMode
 
 	_, _ = a.bot.Send(editMsg)
+
+	details := a.formatter.FormatTrainingLogs([]entity.TrainingSession{*session})
+	if details != "" {
+		chunks := splitMessage(details, maxTgMessageLength)
+		for _, chunk := range chunks {
+			_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, chunk))
+		}
+	}
 }
 
 func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, direction string, exerciseID uuid.UUID, err error) {

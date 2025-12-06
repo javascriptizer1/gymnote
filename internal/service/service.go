@@ -224,7 +224,7 @@ func (s *service) AddTrainingExercise(ctx context.Context, userID string, exerci
 	return s.addExerciseToSession(ctx, session, exerciseID)
 }
 
-func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight float32, reps uint8, notes string) error {
+func (s *service) AddOrUpdateSet(ctx context.Context, userID string, messageID int, weight float32, reps uint8, notes string) error {
 	session, err := s.getSession(ctx, userID)
 	if err != nil {
 		log.Printf("Error getting session for user '%s': %v\n", userID, err)
@@ -248,6 +248,7 @@ func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight floa
 		lastSet.SetReps(reps)
 		lastSet.SetNotes(notes)
 		lastSet.SetDifficulty(s.parser.ParseDifficulty(notes))
+		lastSet.SetMessageID(messageID)
 		return s.cache.SaveSession(ctx, session)
 	}
 
@@ -260,10 +261,34 @@ func (s *service) AddOrUpdateSet(ctx context.Context, userID string, weight floa
 			Reps:       reps,
 			Notes:      notes,
 			Difficulty: s.parser.ParseDifficulty(notes),
+			MessageID:  messageID,
 		},
 	))
 
 	activeExercise.AddSet(newSet)
+
+	return s.cache.SaveSession(ctx, session)
+}
+
+func (s *service) UpdateSetFromMessage(ctx context.Context, userID string, messageID int, weight float32, reps uint8, notes string) error {
+	session, err := s.getSession(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errs.ErrSessionNotFound) {
+			return nil
+		}
+		log.Printf("Error getting session for user '%s': %v\n", userID, err)
+		return err
+	}
+
+	set := session.FindSetByMessageID(messageID)
+	if set == nil {
+		return nil
+	}
+
+	set.SetWeight(weight)
+	set.SetReps(reps)
+	set.SetNotes(notes)
+	set.SetDifficulty(s.parser.ParseDifficulty(notes))
 
 	return s.cache.SaveSession(ctx, session)
 }
