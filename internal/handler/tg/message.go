@@ -15,7 +15,9 @@ const (
 	// callbacks
 	musclePrefix                      = "muscle:"
 	exercisePrefix                    = "exercise:"
-	finishTrainingPrefix              = "finish_training:"
+	confirmationFinishTrainingPrefix  = "confirmation_finish_training:"
+	acceptFinishTrainingPrefix        = "accept_finish_training:"
+	rejectFinishTrainingPrefix        = "reject_finish_training:"
 	startNewExercisePrefix            = "start_new_exercise:"
 	startGetExerciseProgressionPrefix = "start_progression:"
 	startGetExerciseHistoryPrefix     = "start_exercise_history:"
@@ -41,6 +43,7 @@ const (
 	setText                                   = "✅ Подход сохранён! Введите данные нового подхода, либо выберите действие:"
 	exerciseCreatedText                       = "Упражнение \"%s\" добавлено в группу \"%s\""
 	startNewExerciseText                      = "➕ Начать новое упражнение"
+	finishTrainingConfirmationText            = "Вы уверены, что хотите завершить тренировку?"
 	finishTrainingText                        = "🏁 Завершить тренировку"
 	finishText                                = "🏁 Тренировка завершена!\n• Упражнений: %d\n• Подходов: %d\n• Общий вес (кг): %.2f"
 	startOneRMText                            = "Введите вес и количество повторений через запятую (например: 152.5,5).\n\nЯ посчитаю одноповторный максимум по формулам Эпли, Бжицки, Лэндера, Ломбарди, Мэйхью, О'Коннора, Ватана, покажу среднее значение и популярные процентовки от 1ПМ."
@@ -55,6 +58,8 @@ const (
 	backToExercisesText                       = "⬅️ Выбрать другое"
 
 	adminOnlyText                     = "Функция доступна только избранным :)"
+	answerYes                         = "✅ Да"
+	answerNo                          = "❌ Нет"
 	emptyExerciseNameText             = "Пустое имя упражнения"
 	unknownMuscleGroupText            = "Неизвестная мышечная группа!\nДоступные: %v"
 	exerciseWithNameAlreadyExistsText = "Упражнение \"%s\" уже существует!"

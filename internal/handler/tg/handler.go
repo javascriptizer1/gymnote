@@ -611,7 +611,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 			tgbotapi.NewInlineKeyboardButtonData(startNewExerciseText, startNewExercisePrefix),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(finishTrainingText, finishTrainingPrefix),
+			tgbotapi.NewInlineKeyboardButtonData(finishTrainingText, confirmationFinishTrainingPrefix),
 		),
 	)
 
@@ -641,7 +641,25 @@ func (a *API) StartNewExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	_, _ = a.bot.Send(msg)
 }
 
-func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
+func (a *API) ConfirmationFinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
+	chatID := callback.Message.Chat.ID
+
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(answerYes, acceptFinishTrainingPrefix),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(answerNo, rejectFinishTrainingPrefix),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(chatID, finishTrainingConfirmationText)
+	msg.ReplyMarkup = keyboard
+
+	_, _ = a.bot.Send(msg)
+}
+
+func (a *API) AcceptFinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
 	userID := strconv.FormatInt(callback.From.ID, 10)
@@ -668,6 +686,14 @@ func (a *API) FinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 			_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, chunk))
 		}
 	}
+}
+
+func (a *API) RejectFinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
+	chatID := callback.Message.Chat.ID
+	messageID := callback.Message.MessageID
+
+	msg := tgbotapi.NewDeleteMessage(chatID, messageID)
+	_, _ = a.bot.Send(msg)
 }
 
 func parseMuscleGroupCallbackData(data string) (muscleGroup string, page int, direction string, exerciseID uuid.UUID, err error) {

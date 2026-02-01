@@ -108,7 +108,9 @@ func (a *API) registerHandlers() {
 	a.callbackHandlers = map[string]CallbackHandler{
 		musclePrefix:                      a.MuscleGroupHandler,
 		exercisePrefix:                    a.ExerciseHandler,
-		finishTrainingPrefix:              a.FinishTrainingHandler,
+		confirmationFinishTrainingPrefix:  a.ConfirmationFinishTrainingHandler,
+		acceptFinishTrainingPrefix:        a.AcceptFinishTrainingHandler,
+		rejectFinishTrainingPrefix:        a.RejectFinishTrainingHandler,
 		startNewExercisePrefix:            a.StartNewExerciseHandler,
 		startGetExerciseProgressionPrefix: a.ExerciseProgressionChartHandler,
 		startGetExerciseHistoryPrefix:     a.ExerciseHistoryHandler,
