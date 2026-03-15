@@ -85,7 +85,8 @@ func (p *parser) parseExercise(line string) (Exercise, error) {
 		return exs, errors.New("invalid exercise format")
 	}
 
-	exerciseName := strings.TrimSpace(strings.Split(parts[0], ".")[1])
+	nameParts := strings.SplitN(strings.TrimSpace(parts[0]), ".", 2)
+	exerciseName := strings.TrimSpace(nameParts[1])
 	setsData := strings.Split(parts[1], ";")
 
 	var sets []Set
