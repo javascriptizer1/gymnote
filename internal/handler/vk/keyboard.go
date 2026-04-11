@@ -9,9 +9,110 @@ import (
 	"gymnote/internal/entity"
 )
 
+func (a *API) createMainMenuKeyboard() *object.MessagesKeyboard {
+	keyboard := &object.MessagesKeyboard{
+		OneTime: false,
+		Buttons: [][]object.MessagesKeyboardButton{
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "🏋️ Начать тренировку",
+					},
+					Color: "positive",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "📝 Загрузить тренировку",
+					},
+					Color: "primary",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "📊 История тренировок",
+					},
+					Color: "primary",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "📈 Прогрессия весов",
+					},
+					Color: "primary",
+				},
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "📋 История упражнения",
+					},
+					Color: "primary",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "🔢 Расчет 1ПМ",
+					},
+					Color: "secondary",
+				},
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "🗑 Сбросить тренировку",
+					},
+					Color: "negative",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "🔗 Связать аккаунты",
+					},
+					Color: "secondary",
+				},
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "👤 Мои аккаунты",
+					},
+					Color: "secondary",
+				},
+			},
+			{
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "➕ Создать упражнение",
+					},
+					Color: "secondary",
+				},
+				{
+					Action: object.MessagesKeyboardButtonAction{
+						Type:  "text",
+						Label: "❓ Помощь",
+					},
+					Color: "secondary",
+				},
+			},
+		},
+	}
+
+	return keyboard
+}
+
 func (a *API) createMuscleGroupKeyboard() *object.MessagesKeyboard {
 	keyboard := &object.MessagesKeyboard{
-		Inline: true,
+		Inline:  true,
 		Buttons: [][]object.MessagesKeyboardButton{},
 	}
 
@@ -33,19 +134,18 @@ func (a *API) createMuscleGroupKeyboard() *object.MessagesKeyboard {
 
 func (a *API) createExerciseKeyboard(exercises []entity.Exercise, muscleGroup string, page, totalPages int, callbackPrefix string) *object.MessagesKeyboard {
 	keyboard := &object.MessagesKeyboard{
-		Inline: true,
+		Inline:  true,
 		Buttons: [][]object.MessagesKeyboardButton{},
 	}
 
 	for _, exercise := range exercises {
 		payload := fmt.Sprintf(`{"button":"%s"}`, callbackPrefix+exercise.ID().String())
-		
-		// VK ограничивает длину текста кнопки до 40 символов
+
 		label := exercise.Name()
 		if len(label) > 40 {
 			label = label[:37] + "..."
 		}
-		
+
 		button := object.MessagesKeyboardButton{
 			Action: object.MessagesKeyboardButtonAction{
 				Type:    "callback",
@@ -56,7 +156,6 @@ func (a *API) createExerciseKeyboard(exercises []entity.Exercise, muscleGroup st
 		keyboard.Buttons = append(keyboard.Buttons, []object.MessagesKeyboardButton{button})
 	}
 
-	// Пагинация
 	var paginationButtons []object.MessagesKeyboardButton
 	if page > 0 {
 		payload := fmt.Sprintf(`{"button":"%s%s:%s:%d"}`, musclePrefix, muscleGroup, prevDirection, page-1)

@@ -158,6 +158,7 @@ func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDa
 	if err != nil {
 		log.Printf("Error retrieving training sessions for user '%s': %v\n", userID, err)
 	}
+
 	return sessions, err
 }
 

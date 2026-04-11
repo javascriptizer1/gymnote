@@ -4,18 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       deploy:
-        description: 'Deploy the service'
+        description: "Deploy the service"
         required: true
-        default: 'false'
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
       deploy_target:
-        description: 'Deployment target (vps)'
+        description: "Deployment target"
         required: true
-        default: 'vps'
+        default: "both"
+        type: choice
+        options:
+          - "vps-ru"
+          - "vps-foreign"
+          - "both"
 
 env:
-  VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-  VPS_USER: ${{ secrets.VPS_USER }}
-  VPS_HOST: ${{ secrets.VPS_HOST }}
   DB_USER: ${{ secrets.DB_USER }}
   DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
   DB_HOST: ${{ secrets.DB_HOST }}
@@ -37,25 +43,110 @@ jobs:
         with:
           go-version: 1.23.5
 
-  deploy-vps:
+      - name: Build binary
+        run: |
+          go mod download
+          go build -o ./bin ./cmd/gymnote/main.go
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: gymnote-binary
+          path: ./bin
+
+  deploy-vps-ru:
     runs-on: ubuntu-latest
     environment: production
     needs: lint
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && github.event.inputs.deploy_target == 'vps'
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      github.event.inputs.deploy == 'true' && 
+      (github.event.inputs.deploy_target == 'vps-ru' || github.event.inputs.deploy_target == 'both')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y sshpass
+      - name: Download binary artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: gymnote-binary
+          path: ./bin
 
-      - name: Create .env file
+      - name: Create .env file for RU VPS (VK bot enabled)
         run: |
           echo "ENV=${{ vars.ENV }}" >> .env
           echo "GRACEFUL_TIMEOUT=${{ vars.GRACEFUL_TIMEOUT }}" >> .env
+
+          echo "TELEGRAM_ENABLED=false" >> .env
+          echo "VK_ENABLED=true" >> .env
+
+          echo "VK_ACCESS_TOKEN=${{ secrets.VK_ACCESS_TOKEN }}" >> .env
+          echo "VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}" >> .env
+          echo "VK_GRAPHICS_PATH=${{ vars.VK_GRAPHICS_PATH }}" >> .env
+          echo "VK_AUTHOR_NAME=${{ vars.VK_AUTHOR_NAME }}" >> .env
+          echo "VK_AUTHOR_ID=${{ secrets.VK_AUTHOR_ID }}" >> .env
+
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+
+          echo "REDIS_ADDRESS=${{ secrets.REDIS_ADDRESS }}" >> .env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
+          echo "REDIS_DB=${{ secrets.REDIS_DB }}" >> .env
+
+      - name: Set up SSH Key for RU VPS
+        run: |
+          echo "${{ secrets.VPS_RU_SSH_KEY }}" > deploy_key.pem
+          chmod 600 deploy_key.pem
+
+      - name: Deploy to RU VPS
+        env:
+          VPS_USER: ${{ secrets.VPS_RU_USER }}
+          VPS_HOST: ${{ secrets.VPS_RU_HOST }}
+        run: |
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
+
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod 600 /home/$VPS_USER/apps/gymnote/.env"
+
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service || true"
+
+          chmod +x ./bin
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
+
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/gymnote.ini /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service && sudo systemctl status gymnote.service"
+
+  deploy-vps-foreign:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: lint
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      github.event.inputs.deploy == 'true' && 
+      (github.event.inputs.deploy_target == 'vps-foreign' || github.event.inputs.deploy_target == 'both')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: gymnote-binary
+          path: ./bin
+
+      - name: Create .env file for Foreign VPS (Telegram bot enabled)
+        run: |
+          echo "ENV=${{ vars.ENV }}" >> .env
+          echo "GRACEFUL_TIMEOUT=${{ vars.GRACEFUL_TIMEOUT }}" >> .env
+
+          echo "TELEGRAM_ENABLED=true" >> .env
+          echo "VK_ENABLED=false" >> .env
 
           echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
           echo "TELEGRAM_BOT_TIMEOUT=${{ vars.TELEGRAM_BOT_TIMEOUT }}" >> .env
@@ -74,37 +165,26 @@ jobs:
           echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
           echo "REDIS_DB=${{ secrets.REDIS_DB }}" >> .env
 
-      - name: Set up SSH Key
+      - name: Set up SSH Key for Foreign VPS
         run: |
           echo "${{ secrets.VPS_SSH_KEY }}" > deploy_key.pem
           chmod 600 deploy_key.pem
 
-      - name: Copy .env file to VPS
+      - name: Deploy to Foreign VPS
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "mkdir -p /home/$VPS_USER/apps/gymnote/"
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no -r .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
+
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no .env $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/.env
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod 600 /home/$VPS_USER/apps/gymnote/.env"
 
-      - name: Apply envs in ~/.bashrc
-        run: |
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST << EOF
-            cat /home/$VPS_USER/apps/gymnote/.env | grep -v '^#' | while read line; do
-              echo "export \$line" >> ~/.bashrc
-            done
-          EOF
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service || true"
 
-      - name: Stop gymnote service on VPS
-        run: |
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service"
-
-      - name: Copy binary to VPS
-        run: |
-          go mod download
-          go build -o ./bin ./cmd/gymnote/main.go
+          chmod +x ./bin
           scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
-      - name: Set up systemd service on VPS
-        run: |
           scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/gymnote.ini /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service && sudo systemctl status gymnote.service"

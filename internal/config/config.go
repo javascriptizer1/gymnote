@@ -72,22 +72,22 @@ func MustLoad() *Config {
 
 	if cfg.Telegram.Enabled {
 		if cfg.Telegram.BotToken == "" {
-			log.Fatal("TELEGRAM_BOT_TOKEN is required when ENABLE_TELEGRAM=true")
+			log.Fatal("TELEGRAM_BOT_TOKEN is required when TELEGRAM_ENABLED=true")
 		}
 		if cfg.Telegram.GraphicsPath == "" {
-			log.Fatal("TELEGRAM_BOT_GRAPHICS_PATH is required when ENABLE_TELEGRAM=true")
+			log.Fatal("TELEGRAM_BOT_GRAPHICS_PATH is required when TELEGRAM_ENABLED=true")
 		}
 	}
 
 	if cfg.VK.Enabled {
 		if cfg.VK.AccessToken == "" {
-			log.Fatal("VK_ACCESS_TOKEN is required when ENABLE_VK=true")
+			log.Fatal("VK_ACCESS_TOKEN is required when VK_ENABLED=true")
 		}
 		if cfg.VK.GroupID == 0 {
-			log.Fatal("VK_GROUP_ID is required when ENABLE_VK=true")
+			log.Fatal("VK_GROUP_ID is required when VK_ENABLED=true")
 		}
 		if cfg.VK.GraphicsPath == "" {
-			log.Fatal("VK_GRAPHICS_PATH is required when ENABLE_VK=true")
+			log.Fatal("VK_GRAPHICS_PATH is required when VK_ENABLED=true")
 		}
 	}
 

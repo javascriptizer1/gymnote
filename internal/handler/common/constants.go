@@ -11,6 +11,9 @@ const (
 	GetExerciseProgressionCommand = "get_exercise_progression"
 	GetExerciseHistoryCommand     = "get_exercise_history"
 	OneRMCommand                  = "one_rm"
+	LinkAccountCommand            = "link"
+	UnlinkAccountCommand          = "unlink"
+	MyAccountsCommand             = "my_accounts"
 )
 
 const (

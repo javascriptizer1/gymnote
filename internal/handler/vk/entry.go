@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"runtime/debug"
-	"strconv"
 	"strings"
 
 	"github.com/SevereCloud/vksdk/v2/api"
@@ -14,10 +13,10 @@ import (
 )
 
 func (a *API) Register() {
-	// Проверяем подключение к группе
 	group, err := a.vk.GroupsGetByID(api.Params{})
 	if err != nil {
 		log.Printf("VK: Failed to connect to group: %v", err)
+
 		return
 	}
 
@@ -25,10 +24,10 @@ func (a *API) Register() {
 		log.Printf("VK Bot connected to group: %s (ID: %d)", group[0].Name, group[0].ID)
 	}
 
-	// Инициализируем Long Poll
 	lp, err := longpoll.NewLongPoll(a.vk, a.cfg.GroupID)
 	if err != nil {
 		log.Printf("VK: Failed to initialize Long Poll: %v", err)
+
 		return
 	}
 
@@ -57,6 +56,7 @@ func (a *API) Register() {
 	})
 
 	log.Println("VK LongPoll started")
+
 	if err := lp.Run(); err != nil {
 		log.Printf("VK LongPoll error: %v", err)
 	}
@@ -68,52 +68,23 @@ func (a *API) handleMessage(obj *events.MessageNewObject) {
 		return
 	}
 
-	// Обработка кнопок главного меню
-	switch text {
-	case "🏋️ Начать тренировку":
-		a.StartTrainingHandler(obj)
-		return
-	case "📝 Загрузить тренировку":
-		a.StartUploadTrainingHandler(obj)
-		return
-	case "📊 История тренировок":
-		a.StartGetTrainingsHandler(obj)
-		return
-	case "📈 Прогрессия весов":
-		a.StartExerciseProgressionChartHandler(obj)
-		return
-	case "📋 История упражнения":
-		a.StartExerciseHistoryHandler(obj)
-		return
-	case "🔢 Расчет 1ПМ":
-		a.StartOneRMHandler(obj)
-		return
-	case "🗑 Сбросить тренировку":
-		a.ClearTrainingHandler(obj)
-		return
-	case "➕ Создать упражнение":
-		a.StartCreateExerciseHandler(obj)
-		return
-	case "❓ Помощь":
-		a.HelpHandler(obj)
+	if handler, exists := a.commandHandlers[text]; exists {
+		handler(obj)
 		return
 	}
 
-	// Проверяем, является ли сообщение командой
 	if strings.HasPrefix(text, "/") {
 		a.handleCommand(obj)
 		return
 	}
 
-	// Обрабатываем состояние пользователя
 	a.handleState(obj)
 }
 
 func (a *API) handleCommand(obj *events.MessageNewObject) {
 	text := strings.TrimSpace(obj.Message.Text)
 	command := strings.TrimPrefix(text, "/")
-	
-	// Убираем параметры команды
+
 	if idx := strings.Index(command, " "); idx != -1 {
 		command = command[:idx]
 	}
@@ -126,7 +97,7 @@ func (a *API) handleCommand(obj *events.MessageNewObject) {
 }
 
 func (a *API) handleState(obj *events.MessageNewObject) {
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 	state := a.getUserState(userID)
 
 	if handler, exists := a.stateHandlers[state]; exists {
@@ -150,17 +121,16 @@ func (a *API) handleCallbackQuery(obj *events.MessageEventObject) {
 	}
 }
 
-
-// parseCallbackPayload извлекает данные кнопки из JSON payload
 func parseCallbackPayload(payload []byte) string {
 	var payloadData struct {
 		Button string `json:"button"`
 	}
-	
+
 	if err := json.Unmarshal(payload, &payloadData); err != nil {
 		log.Printf("VK: Failed to parse callback payload: %v", err)
+
 		return ""
 	}
-	
+
 	return payloadData.Button
 }

@@ -24,6 +24,12 @@ type Formatter interface {
 type ChartService interface {
 	GenerateLinearChart(config chart.LinearChartConfig) error
 }
+type AccountService interface {
+	GetOrCreateAccount(ctx context.Context, platform entity.Platform, platformUserID string, username string) (*entity.UserAccount, error)
+	CreateLinkCode(ctx context.Context, platform entity.Platform, platformUserID string) (*entity.LinkCode, error)
+	LinkAccountWithCode(ctx context.Context, code string, platform entity.Platform, platformUserID string, username string) error
+	GetLinkedAccounts(ctx context.Context, platform entity.Platform, platformUserID string) ([]entity.UserAccount, error)
+}
 type TrainingService interface {
 	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
 	GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID) ([]entity.ExerciseProgression, error)
@@ -48,6 +54,7 @@ type API struct {
 	formatter        Formatter
 	chartService     ChartService
 	trainingService  TrainingService
+	accountService   AccountService
 	commandHandlers  map[string]CommandHandler
 	stateHandlers    map[entity.UserState]func(*tgbotapi.Message)
 	callbackHandlers map[string]CallbackHandler
@@ -55,7 +62,7 @@ type API struct {
 	mu               sync.Mutex
 }
 
-func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter, chartService ChartService, trainingService TrainingService) *API {
+func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter, chartService ChartService, trainingService TrainingService, accountService AccountService) *API {
 	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		log.Fatalln(err)
@@ -70,6 +77,7 @@ func NewAPI(ctx context.Context, cfg *config.TelegramConfig, formatter Formatter
 		formatter:        formatter,
 		chartService:     chartService,
 		trainingService:  trainingService,
+		accountService:   accountService,
 		commandHandlers:  make(map[string]CommandHandler),
 		callbackHandlers: make(map[string]CallbackHandler),
 		stateHandlers:    make(map[entity.UserState]func(*tgbotapi.Message)),
@@ -95,6 +103,8 @@ func (a *API) registerHandlers() {
 		getExerciseProgressionCommand: a.StartExerciseProgressionChartHandler,
 		getExerciseHistoryCommand:     a.StartExerciseHistoryHandler,
 		oneRMCommand:                  a.StartOneRMHandler,
+		linkAccountCommand:            a.LinkAccountHandler,
+		myAccountsCommand:             a.MyAccountsHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*tgbotapi.Message){
@@ -129,6 +139,8 @@ func (a *API) setBotCommands() {
 		{Command: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Command: clearTrainingCommand, Description: "Сбросить текущую тренировку"},
 		{Command: oneRMCommand, Description: "Рассчитать одноповторный максимум"},
+		{Command: linkAccountCommand, Description: "Связать аккаунты Telegram и VK"},
+		{Command: myAccountsCommand, Description: "Мои связанные аккаунты"},
 		{Command: helpCommand, Description: "Помощь и команды"},
 	}
 

@@ -26,15 +26,16 @@ type app struct {
 
 	cfg *config.Config
 
-	tgAPI tg.API
-	vkAPI vk.API
+	tgAPI *tg.API
+	vkAPI *vk.API
 	db    repository.DB
 	cache repository.Cache
 
-	parser    service.Parser
-	formatter tg.Formatter
-	chart     tg.ChartService
-	service   tg.TrainingService
+	parser          service.Parser
+	formatter       tg.Formatter
+	chart           tg.ChartService
+	trainingService tg.TrainingService
+	accountService  tg.AccountService
 }
 
 func New() (*app, error) {
@@ -98,25 +99,26 @@ func (a *app) initServices() error {
 	a.parser = parser.New()
 	a.formatter = formatter.New()
 	a.chart = chart.New()
-	a.service = service.New(a.db, a.cache, a.parser)
+	a.trainingService = service.New(a.db, a.cache, a.parser)
+	a.accountService = service.NewAccountService(a.db)
 
 	if a.cfg.Telegram.Enabled {
-		a.tgAPI = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.chart, a.service)
+		a.tgAPI = tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.chart, a.trainingService, a.accountService)
 	}
 
 	if a.cfg.VK.Enabled {
-		a.vkAPI = *vk.NewAPI(a.ctx, &a.cfg.VK, a.formatter, a.chart, a.service)
+		a.vkAPI = vk.NewAPI(a.ctx, &a.cfg.VK, a.formatter, a.chart, a.trainingService, a.accountService)
 	}
 
 	return nil
 }
 
 func (a *app) Run() error {
-	if a.cfg.Telegram.Enabled {
+	if a.tgAPI != nil {
 		go a.tgAPI.Register()
 	}
 
-	if a.cfg.VK.Enabled {
+	if a.vkAPI != nil {
 		go a.vkAPI.Register()
 	}
 

@@ -16,6 +16,8 @@ const (
 	getExerciseProgressionCommand = common.GetExerciseProgressionCommand
 	getExerciseHistoryCommand     = common.GetExerciseHistoryCommand
 	oneRMCommand                  = common.OneRMCommand
+	linkAccountCommand            = common.LinkAccountCommand
+	myAccountsCommand             = common.MyAccountsCommand
 	// callbacks
 	musclePrefix                      = common.MusclePrefix
 	exercisePrefix                    = common.ExercisePrefix
@@ -67,6 +69,17 @@ const (
 	unknownMuscleGroupText            = common.UnknownMuscleGroupText
 	exerciseWithNameAlreadyExistsText = common.ExerciseWithNameAlreadyExistsText
 	unknownCommandText                = common.UnknownCommandText
+
+	// account linking
+	linkAccountText           = common.LinkAccountTextVK
+	enterLinkCodeText         = common.EnterLinkCodeText
+	accountLinkedText         = common.AccountLinkedText
+	accountAlreadyLinkedText  = common.AccountAlreadyLinkedText
+	myAccountsText            = common.MyAccountsText
+	noLinkedAccountsText      = common.NoLinkedAccountsText
+	errInvalidLinkCode        = common.ErrInvalidLinkCode
+	errLinkingFailed          = common.ErrLinkingFailed
+	errCannotLinkSamePlatform = common.ErrCannotLinkSamePlatform
 
 	// error messages
 	errStartTraining     = common.ErrStartTraining

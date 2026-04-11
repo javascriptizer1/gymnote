@@ -146,3 +146,21 @@ func (m *mongodb) GetTrainingSessions(ctx context.Context, userID string, fromDa
 
 	return sessions, nil
 }
+
+func (m *mongodb) UpdateTrainingSessionsUserID(ctx context.Context, oldUserID string, newUserID string) error {
+	if _, err := m.sessionColl.UpdateMany(ctx,
+		bson.M{"user_id": oldUserID},
+		bson.M{"$set": bson.M{"user_id": newUserID}},
+	); err != nil {
+		return fmt.Errorf("failed to update training_sessions: %w", err)
+	}
+
+	if _, err := m.logColl.UpdateMany(ctx,
+		bson.M{"user_id": oldUserID},
+		bson.M{"$set": bson.M{"user_id": newUserID}},
+	); err != nil {
+		return fmt.Errorf("failed to update training_logs: %w", err)
+	}
+
+	return nil
+}

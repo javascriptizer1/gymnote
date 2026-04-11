@@ -22,4 +22,7 @@ type DB interface {
 	GetLastSetsForExercise(ctx context.Context, userID string, exerciseID uuid.UUID, limitDays int64) ([]entity.ExerciseProgression, error)
 	InsertTrainingSession(ctx context.Context, req entity.TrainingSession) error
 	GetTrainingSessions(ctx context.Context, userID string, fromDate, toDate time.Time) ([]entity.TrainingSession, error)
+	UpdateTrainingSessionsUserID(ctx context.Context, oldUserID string, newUserID string) error
+
+	UserAccountRepository
 }

@@ -43,7 +43,7 @@ func (a *API) handleCommand(message *tgbotapi.Message) {
 }
 
 func (a *API) handleState(message *tgbotapi.Message) {
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 	state := a.getUserState(userID)
 
 	if handler, exists := a.stateHandlers[state]; exists {
@@ -69,7 +69,7 @@ func (a *API) handleEditedMessage(message *tgbotapi.Message) {
 		return
 	}
 
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 	input := message.Text
 	if input == "" {
 		return

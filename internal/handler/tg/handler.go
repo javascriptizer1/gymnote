@@ -51,7 +51,7 @@ func (a *API) HelpHandler(message *tgbotapi.Message) {
 
 func (a *API) OneRMHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 	defer a.clearUserState(userID)
 
 	input := strings.TrimSpace(message.Text)
@@ -115,7 +115,7 @@ func (a *API) OneRMHandler(message *tgbotapi.Message) {
 
 func (a *API) StartOneRMHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	a.setUserState(userID, entity.StateAwaitingOneRMInput)
 	msg := tgbotapi.NewMessage(chatID, startOneRMText)
@@ -124,7 +124,7 @@ func (a *API) StartOneRMHandler(message *tgbotapi.Message) {
 
 func (a *API) StartExerciseProgressionChartHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
@@ -144,7 +144,7 @@ func (a *API) StartExerciseProgressionChartHandler(message *tgbotapi.Message) {
 
 func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 	messageID := callback.Message.MessageID
 	exerciseIDStr := strings.TrimPrefix(callback.Data, startGetExerciseProgressionPrefix)
 
@@ -199,7 +199,7 @@ func (a *API) ExerciseProgressionChartHandler(callback *tgbotapi.CallbackQuery) 
 
 func (a *API) StartExerciseHistoryHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	var buttons [][]tgbotapi.InlineKeyboardButton
 	for _, group := range muscleGroupsWithSmiles {
@@ -219,7 +219,7 @@ func (a *API) StartExerciseHistoryHandler(message *tgbotapi.Message) {
 
 func (a *API) ExerciseHistoryHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 	messageID := callback.Message.MessageID
 	exerciseIDStr := strings.TrimPrefix(callback.Data, startGetExerciseHistoryPrefix)
 
@@ -256,7 +256,7 @@ func (a *API) ExerciseHistoryHandler(callback *tgbotapi.CallbackQuery) {
 
 func (a *API) StartGetTrainingsHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	a.setUserState(userID, entity.StateAwaitingGetTrainingsInput)
 	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startGetTrainingsText))
@@ -264,7 +264,7 @@ func (a *API) StartGetTrainingsHandler(message *tgbotapi.Message) {
 
 func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	defer a.clearUserState(userID)
 
@@ -309,7 +309,7 @@ func (a *API) UnknownCommandHandler(message *tgbotapi.Message) {
 
 func (a *API) StartCreateExerciseHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	if a.cfg.AuthorName != "" && message.From.UserName != a.cfg.AuthorName {
 		_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, adminOnlyText))
@@ -322,7 +322,7 @@ func (a *API) StartCreateExerciseHandler(message *tgbotapi.Message) {
 
 func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	defer a.clearUserState(userID)
 
@@ -357,7 +357,7 @@ func (a *API) CreateExerciseHandler(message *tgbotapi.Message) {
 
 func (a *API) StartUploadTrainingHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	a.setUserState(userID, entity.StateAwaitingTrainingInput)
 	_, _ = a.bot.Send(tgbotapi.NewMessage(chatID, startUploadTrainingText))
@@ -365,7 +365,7 @@ func (a *API) StartUploadTrainingHandler(message *tgbotapi.Message) {
 
 func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	defer a.clearUserState(userID)
 
@@ -380,7 +380,7 @@ func (a *API) UploadTrainingHandler(message *tgbotapi.Message) {
 }
 
 func (a *API) ClearTrainingHandler(message *tgbotapi.Message) {
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	defer a.clearUserState(userID)
 
@@ -399,7 +399,7 @@ func (a *API) ClearTrainingHandler(message *tgbotapi.Message) {
 
 func (a *API) StartTrainingHandler(message *tgbotapi.Message) {
 	chatID := message.Chat.ID
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 
 	_, err := a.trainingService.StartTraining(a.ctx, userID)
 	if err != nil {
@@ -425,7 +425,7 @@ func (a *API) StartTrainingHandler(message *tgbotapi.Message) {
 func (a *API) MuscleGroupHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 	state := a.getUserState(userID)
 
 	muscleGroup, page, _, cancelExerciseID, err := parseMuscleGroupCallbackData(callback.Data)
@@ -522,7 +522,7 @@ func (a *API) BackToMuscleGroupsHandler(callback *tgbotapi.CallbackQuery) {
 func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 	text := strings.TrimPrefix(callback.Data, exercisePrefix)
 	args := strings.SplitN(text, ":", 2)
 
@@ -577,7 +577,7 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 }
 
 func (a *API) SetHandler(message *tgbotapi.Message) {
-	userID := strconv.FormatInt(message.From.ID, 10)
+	userID := a.getUserID(message)
 	input := message.Text
 
 	parts := strings.SplitN(input, "\n", 2)
@@ -624,7 +624,7 @@ func (a *API) SetHandler(message *tgbotapi.Message) {
 
 func (a *API) StartNewExerciseHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 
 	defer a.clearUserState(userID)
 
@@ -663,7 +663,7 @@ func (a *API) ConfirmationFinishTrainingHandler(callback *tgbotapi.CallbackQuery
 func (a *API) AcceptFinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	chatID := callback.Message.Chat.ID
 	messageID := callback.Message.MessageID
-	userID := strconv.FormatInt(callback.From.ID, 10)
+	userID := a.getUserIDFromCallback(callback)
 
 	defer a.clearUserState(userID)
 
@@ -739,11 +739,7 @@ func paginate[T any](entities []T, page int, pageSize int) ([]T, int, error) {
 	}
 
 	start := page * pageSize
-	end := start + pageSize
-
-	if end > len(entities) {
-		end = len(entities)
-	}
+	end := min(start+pageSize, len(entities))
 
 	pagedExercises := entities[start:end]
 	return pagedExercises, totalPages, nil

@@ -27,6 +27,13 @@ type ChartService interface {
 	GenerateLinearChart(config chart.LinearChartConfig) error
 }
 
+type AccountService interface {
+	GetOrCreateAccount(ctx context.Context, platform entity.Platform, platformUserID string, username string) (*entity.UserAccount, error)
+	CreateLinkCode(ctx context.Context, platform entity.Platform, platformUserID string) (*entity.LinkCode, error)
+	LinkAccountWithCode(ctx context.Context, code string, platform entity.Platform, platformUserID string, username string) error
+	GetLinkedAccounts(ctx context.Context, platform entity.Platform, platformUserID string) ([]entity.UserAccount, error)
+}
+
 type TrainingService interface {
 	ParseTraining(ctx context.Context, e entity.Event) (*entity.TrainingSession, error)
 	GetExerciseProgression(ctx context.Context, userID string, exerciseID uuid.UUID) ([]entity.ExerciseProgression, error)
@@ -51,6 +58,7 @@ type API struct {
 	formatter        Formatter
 	chartService     ChartService
 	trainingService  TrainingService
+	accountService   AccountService
 	commandHandlers  map[string]CommandHandler
 	stateHandlers    map[entity.UserState]func(*events.MessageNewObject)
 	callbackHandlers map[string]CallbackHandler
@@ -58,7 +66,7 @@ type API struct {
 	mu               sync.Mutex
 }
 
-func NewAPI(ctx context.Context, cfg *config.VKConfig, formatter Formatter, chartService ChartService, trainingService TrainingService) *API {
+func NewAPI(ctx context.Context, cfg *config.VKConfig, formatter Formatter, chartService ChartService, trainingService TrainingService, accountService AccountService) *API {
 	vk := api.NewVK(cfg.AccessToken)
 
 	api := &API{
@@ -68,6 +76,7 @@ func NewAPI(ctx context.Context, cfg *config.VKConfig, formatter Formatter, char
 		formatter:        formatter,
 		chartService:     chartService,
 		trainingService:  trainingService,
+		accountService:   accountService,
 		commandHandlers:  make(map[string]CommandHandler),
 		callbackHandlers: make(map[string]CallbackHandler),
 		stateHandlers:    make(map[entity.UserState]func(*events.MessageNewObject)),
@@ -95,6 +104,20 @@ func (a *API) registerHandlers() {
 		getExerciseProgressionCommand: a.StartExerciseProgressionChartHandler,
 		getExerciseHistoryCommand:     a.StartExerciseHistoryHandler,
 		oneRMCommand:                  a.StartOneRMHandler,
+		linkAccountCommand:            a.LinkAccountHandler,
+		myAccountsCommand:             a.MyAccountsHandler,
+
+		"🏋️ Начать тренировку":   a.StartTrainingHandler,
+		"📝 Загрузить тренировку": a.StartUploadTrainingHandler,
+		"📊 История тренировок":   a.StartGetTrainingsHandler,
+		"📈 Прогрессия весов":     a.StartExerciseProgressionChartHandler,
+		"📋 История упражнения":   a.StartExerciseHistoryHandler,
+		"🔢 Расчет 1ПМ":           a.StartOneRMHandler,
+		"🗑 Сбросить тренировку":  a.ClearTrainingHandler,
+		"🔗 Связать аккаунты":     a.LinkAccountHandler,
+		"👤 Мои аккаунты":         a.MyAccountsHandler,
+		"➕ Создать упражнение":   a.StartCreateExerciseHandler,
+		"❓ Помощь":               a.HelpHandler,
 	}
 
 	a.stateHandlers = map[entity.UserState]func(*events.MessageNewObject){
@@ -118,9 +141,7 @@ func (a *API) registerHandlers() {
 	}
 }
 
-
 func (a *API) setBotCommands() {
-	// Формируем JSON с командами
 	type Command struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -136,17 +157,16 @@ func (a *API) setBotCommands() {
 		{Name: createExerciseCommand, Description: "Создать новое упражнение"},
 		{Name: clearTrainingCommand, Description: "Сбросить текущую тренировку"},
 		{Name: oneRMCommand, Description: "Рассчитать одноповторный максимум"},
+		{Name: linkAccountCommand, Description: "Связать аккаунты Telegram и VK"},
+		{Name: myAccountsCommand, Description: "Мои связанные аккаунты"},
 		{Name: helpCommand, Description: "Помощь и команды"},
 	}
 
-	// VK API требует JSON строку с командами
-	_, err := a.vk.Request("messages.setChatMenuButton", api.Params{
+	if _, err := a.vk.Request("messages.setChatMenuButton", api.Params{
 		"group_id": a.cfg.GroupID,
 		"type":     "commands",
 		"commands": commands,
-	})
-	
-	if err != nil {
+	}); err != nil {
 		log.Printf("VK: Failed to set bot commands: %v", err)
 	} else {
 		log.Printf("VK: Bot commands configured")

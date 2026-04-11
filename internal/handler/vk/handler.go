@@ -26,14 +26,15 @@ import (
 	"gymnote/internal/entity"
 	"gymnote/internal/errs"
 	"gymnote/internal/formatter"
+	"gymnote/internal/handler/common"
 	"gymnote/internal/onerm"
 )
 
 var (
 	maxVKMessageLength     = 4096
-	daysForSetStatistics   = int64(3)
-	daysForExerciseHistory = int64(20)
-	pageSize               = 5 // VK ограничение: inline-клавиатуры имеют жесткий лимит
+	daysForSetStatistics   = common.DaysForSetStatistics
+	daysForExerciseHistory = common.DaysForExerciseHistory
+	pageSize               = 5
 )
 
 func (a *API) sendMessage(peerID int, message string, keyboard *object.MessagesKeyboard) {
@@ -50,7 +51,6 @@ func (a *API) sendMessage(peerID int, message string, keyboard *object.MessagesK
 }
 
 func (a *API) sendPhoto(peerID int, photoPath string) {
-	// Получаем URL для загрузки
 	uploadServer, err := a.vk.PhotosGetMessagesUploadServer(api.Params{
 		"peer_id": peerID,
 	})
@@ -59,39 +59,37 @@ func (a *API) sendPhoto(peerID int, photoPath string) {
 		return
 	}
 
-	// Читаем файл в память
 	fileData, err := os.ReadFile(photoPath)
 	if err != nil {
 		log.Printf("VK: Failed to read file: %v", err)
 		return
 	}
 
-	// Создаем multipart form для загрузки
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	
+
 	part, err := writer.CreateFormFile("photo", filepath.Base(photoPath))
 	if err != nil {
 		log.Printf("VK: Failed to create form file: %v", err)
 		return
 	}
-	
+
 	if _, err := part.Write(fileData); err != nil {
 		log.Printf("VK: Failed to write file data: %v", err)
 		return
 	}
-	
+
 	if err := writer.Close(); err != nil {
 		log.Printf("VK: Failed to close writer: %v", err)
 		return
 	}
 
-	// Загружаем файл
 	req, err := http.NewRequest("POST", uploadServer.UploadURL, body)
 	if err != nil {
 		log.Printf("VK: Failed to create request: %v", err)
 		return
 	}
+
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{}
@@ -108,13 +106,12 @@ func (a *API) sendPhoto(peerID int, photoPath string) {
 		return
 	}
 
-	// Парсим ответ
 	var uploadResult struct {
 		Photo  string `json:"photo"`
 		Server int    `json:"server"`
 		Hash   string `json:"hash"`
 	}
-	
+
 	if err := json.Unmarshal(uploadResp, &uploadResult); err != nil {
 		log.Printf("VK: Failed to parse upload response: %v, raw: %s", err, string(uploadResp))
 		return
@@ -125,7 +122,6 @@ func (a *API) sendPhoto(peerID int, photoPath string) {
 		return
 	}
 
-	// Сохраняем фото
 	photos, err := a.vk.PhotosSaveMessagesPhoto(api.Params{
 		"photo":  uploadResult.Photo,
 		"server": uploadResult.Server,
@@ -141,9 +137,8 @@ func (a *API) sendPhoto(peerID int, photoPath string) {
 		return
 	}
 
-	// Отправляем сообщение с фото
 	attachment := fmt.Sprintf("photo%d_%d", photos[0].OwnerID, photos[0].ID)
-	
+
 	b := params.NewMessagesSendBuilder()
 	b.PeerID(peerID)
 	b.Attachment(attachment)
@@ -185,94 +180,9 @@ func (a *API) StartHandler(obj *events.MessageNewObject) {
 		text += fmt.Sprintf(donateAuthorText, a.cfg.AuthorName)
 	}
 
-	// Создаем клавиатуру с основными командами
 	keyboard := a.createMainMenuKeyboard()
+
 	a.sendMessage(peerID, text, keyboard)
-}
-
-func (a *API) createMainMenuKeyboard() *object.MessagesKeyboard {
-	keyboard := &object.MessagesKeyboard{
-		OneTime: false,
-		Buttons: [][]object.MessagesKeyboardButton{
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "🏋️ Начать тренировку",
-					},
-					Color: "positive",
-				},
-			},
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "📝 Загрузить тренировку",
-					},
-					Color: "primary",
-				},
-			},
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "📊 История тренировок",
-					},
-					Color: "primary",
-				},
-			},
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "📈 Прогрессия весов",
-					},
-					Color: "primary",
-				},
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "📋 История упражнения",
-					},
-					Color: "primary",
-				},
-			},
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "🔢 Расчет 1ПМ",
-					},
-					Color: "secondary",
-				},
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "🗑 Сбросить тренировку",
-					},
-					Color: "negative",
-				},
-			},
-			{
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "➕ Создать упражнение",
-					},
-					Color: "secondary",
-				},
-				{
-					Action: object.MessagesKeyboardButtonAction{
-						Type:  "text",
-						Label: "❓ Помощь",
-					},
-					Color: "secondary",
-				},
-			},
-		},
-	}
-
-	return keyboard
 }
 
 func (a *API) HelpHandler(obj *events.MessageNewObject) {
@@ -282,7 +192,8 @@ func (a *API) HelpHandler(obj *events.MessageNewObject) {
 
 func (a *API) OneRMHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
+
 	defer a.clearUserState(userID)
 
 	input := strings.TrimSpace(obj.Message.Text)
@@ -290,6 +201,7 @@ func (a *API) OneRMHandler(obj *events.MessageNewObject) {
 	setData := strings.Split(parts[0], ",")
 	if len(setData) != 2 {
 		a.sendMessage(peerID, errInvalidFormat, nil)
+
 		return
 	}
 
@@ -297,12 +209,14 @@ func (a *API) OneRMHandler(obj *events.MessageNewObject) {
 	reps, errReps := strconv.Atoi(strings.TrimSpace(setData[1]))
 	if errWeight != nil || errReps != nil || weight <= 0 || reps <= 0 {
 		a.sendMessage(peerID, errParseData, nil)
+
 		return
 	}
 
 	summary := onerm.Calculate(weight, reps)
 	if len(summary.Results) == 0 || summary.Average <= 0 {
 		a.sendMessage(peerID, errGeneral, nil)
+
 		return
 	}
 
@@ -341,7 +255,7 @@ func (a *API) OneRMHandler(obj *events.MessageNewObject) {
 
 func (a *API) StartOneRMHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	a.setUserState(userID, entity.StateAwaitingOneRMInput)
 	a.sendMessage(peerID, startOneRMText, nil)
@@ -349,7 +263,7 @@ func (a *API) StartOneRMHandler(obj *events.MessageNewObject) {
 
 func (a *API) StartExerciseProgressionChartHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	keyboard := a.createMuscleGroupKeyboard()
 	a.setUserState(userID, entity.StateAwaitingExerciseProgression)
@@ -360,7 +274,7 @@ func (a *API) ExerciseProgressionChartHandler(obj *events.MessageEventObject) {
 	a.sendEventAnswer(obj.EventID, obj.UserID, obj.PeerID)
 
 	peerID := obj.PeerID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 	conversationMessageID := obj.ConversationMessageID
 	payload := parseCallbackPayload(obj.Payload)
 	exerciseIDStr := strings.TrimPrefix(payload, startGetExerciseProgressionPrefix)
@@ -413,7 +327,7 @@ func (a *API) ExerciseProgressionChartHandler(obj *events.MessageEventObject) {
 
 func (a *API) StartExerciseHistoryHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	keyboard := a.createMuscleGroupKeyboard()
 	a.setUserState(userID, entity.StateAwaitingExerciseHistory)
@@ -424,7 +338,7 @@ func (a *API) ExerciseHistoryHandler(obj *events.MessageEventObject) {
 	a.sendEventAnswer(obj.EventID, obj.UserID, obj.PeerID)
 
 	peerID := obj.PeerID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 	conversationMessageID := obj.ConversationMessageID
 	payload := parseCallbackPayload(obj.Payload)
 	exerciseIDStr := strings.TrimPrefix(payload, startGetExerciseHistoryPrefix)
@@ -434,17 +348,20 @@ func (a *API) ExerciseHistoryHandler(obj *events.MessageEventObject) {
 	exerciseID, err := uuid.Parse(exerciseIDStr)
 	if err != nil {
 		a.sendMessage(peerID, errInvalidExerciseID, nil)
+
 		return
 	}
 
 	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForExerciseHistory)
 	if err != nil {
 		a.sendMessage(peerID, errInternal, nil)
+
 		return
 	}
 
 	if len(sets) == 0 {
 		a.sendMessage(peerID, notFoundTrainingsText, nil)
+
 		return
 	}
 
@@ -456,7 +373,7 @@ func (a *API) ExerciseHistoryHandler(obj *events.MessageEventObject) {
 
 func (a *API) StartGetTrainingsHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	a.setUserState(userID, entity.StateAwaitingGetTrainingsInput)
 	a.sendMessage(peerID, startGetTrainingsText, nil)
@@ -464,7 +381,7 @@ func (a *API) StartGetTrainingsHandler(obj *events.MessageNewObject) {
 
 func (a *API) GetTrainingsHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	defer a.clearUserState(userID)
 
@@ -487,10 +404,12 @@ func (a *API) GetTrainingsHandler(obj *events.MessageNewObject) {
 	trainings, err := a.trainingService.GetTrainingSessions(a.ctx, userID, fromDate, toDate)
 	if err != nil {
 		a.sendMessage(peerID, errGetTrainings, nil)
+
 		return
 	}
 	if len(trainings) == 0 {
 		a.sendMessage(peerID, notFoundTrainingsText, nil)
+
 		return
 	}
 
@@ -508,10 +427,11 @@ func (a *API) UnknownCommandHandler(obj *events.MessageNewObject) {
 
 func (a *API) StartCreateExerciseHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	if a.cfg.AuthorID != 0 && obj.Message.FromID != a.cfg.AuthorID {
 		a.sendMessage(peerID, adminOnlyText, nil)
+
 		return
 	}
 
@@ -521,23 +441,26 @@ func (a *API) StartCreateExerciseHandler(obj *events.MessageNewObject) {
 
 func (a *API) CreateExerciseHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	defer a.clearUserState(userID)
 
 	lines := strings.Split(strings.TrimSpace(obj.Message.Text), "\n")
 	if len(lines) < 3 {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, startCreateExerciseText), nil)
+
 		return
 	}
 
 	name, muscleGroup, equipment := strings.TrimSpace(lines[0]), strings.TrimSpace(lines[1]), strings.TrimSpace(lines[2])
 	if name == "" {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, emptyExerciseNameText), nil)
+
 		return
 	}
 	if !slices.Contains(availableMuscleGroups, muscleGroup) {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, fmt.Sprintf(unknownMuscleGroupText, availableMuscleGroups)), nil)
+
 		return
 	}
 
@@ -548,6 +471,7 @@ func (a *API) CreateExerciseHandler(obj *events.MessageNewObject) {
 		} else {
 			a.sendMessage(peerID, errCreateExercise, nil)
 		}
+
 		return
 	}
 
@@ -556,7 +480,7 @@ func (a *API) CreateExerciseHandler(obj *events.MessageNewObject) {
 
 func (a *API) StartUploadTrainingHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	a.setUserState(userID, entity.StateAwaitingTrainingInput)
 	a.sendMessage(peerID, startUploadTrainingText, nil)
@@ -564,13 +488,14 @@ func (a *API) StartUploadTrainingHandler(obj *events.MessageNewObject) {
 
 func (a *API) UploadTrainingHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	defer a.clearUserState(userID)
 
 	session, err := a.trainingService.ParseTraining(a.ctx, entity.Event{UserID: userID, Text: obj.Message.Text})
 	if err != nil {
 		a.sendMessage(peerID, errUploadTraining, nil)
+
 		return
 	}
 
@@ -580,7 +505,7 @@ func (a *API) UploadTrainingHandler(obj *events.MessageNewObject) {
 
 func (a *API) ClearTrainingHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	defer a.clearUserState(userID)
 
@@ -590,6 +515,7 @@ func (a *API) ClearTrainingHandler(obj *events.MessageNewObject) {
 			text = errNoTraining
 		}
 		a.sendMessage(peerID, text, nil)
+
 		return
 	}
 
@@ -598,11 +524,12 @@ func (a *API) ClearTrainingHandler(obj *events.MessageNewObject) {
 
 func (a *API) StartTrainingHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 
 	_, err := a.trainingService.StartTraining(a.ctx, userID)
 	if err != nil {
 		a.sendMessage(peerID, fmt.Sprintf(errStartTraining, err), nil)
+
 		return
 	}
 
@@ -615,19 +542,21 @@ func (a *API) MuscleGroupHandler(obj *events.MessageEventObject) {
 
 	peerID := obj.PeerID
 	conversationMessageID := obj.ConversationMessageID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 	state := a.getUserState(userID)
 
 	payload := parseCallbackPayload(obj.Payload)
 	muscleGroup, page, _, cancelExerciseID, err := parseMuscleGroupCallbackData(payload)
 	if err != nil {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, err), nil)
+
 		return
 	}
 
 	if cancelExerciseID != uuid.Nil {
 		if err := a.trainingService.DeleteExercise(a.ctx, userID, cancelExerciseID); err != nil {
 			a.sendMessage(peerID, fmt.Sprintf(errGeneral, err), nil)
+
 			return
 		}
 	}
@@ -635,16 +564,19 @@ func (a *API) MuscleGroupHandler(obj *events.MessageEventObject) {
 	exercises, err := a.trainingService.GetExercisesByMuscleGroup(a.ctx, muscleGroup)
 	if err != nil {
 		a.sendMessage(peerID, errExerciseLoad, nil)
+
 		return
 	}
 	if len(exercises) == 0 {
 		a.sendMessage(peerID, errNoExercises, nil)
+
 		return
 	}
 
 	pagedExercises, totalPages, err := paginate(exercises, page, pageSize)
 	if err != nil {
 		a.sendMessage(peerID, err.Error(), nil)
+
 		return
 	}
 
@@ -675,13 +607,14 @@ func (a *API) ExerciseHandler(obj *events.MessageEventObject) {
 
 	peerID := obj.PeerID
 	conversationMessageID := obj.ConversationMessageID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 	payload := parseCallbackPayload(obj.Payload)
 	text := strings.TrimPrefix(payload, exercisePrefix)
 	args := strings.SplitN(text, ":", 2)
 
 	if len(args) != 2 {
 		a.sendMessage(peerID, errInternal, nil)
+
 		return
 	}
 
@@ -690,18 +623,21 @@ func (a *API) ExerciseHandler(obj *events.MessageEventObject) {
 	exerciseID, err := uuid.Parse(exerciseIDStr)
 	if err != nil {
 		a.sendMessage(peerID, errInvalidExerciseID, nil)
+
 		return
 	}
 
 	err = a.trainingService.AddTrainingExercise(a.ctx, userID, exerciseID)
 	if err != nil {
 		a.sendMessage(peerID, fmt.Sprintf(errAddExercise, err), nil)
+
 		return
 	}
 
 	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForSetStatistics)
 	if err != nil {
 		a.sendMessage(peerID, errInternal, nil)
+
 		return
 	}
 
@@ -720,13 +656,14 @@ func (a *API) ExerciseHandler(obj *events.MessageEventObject) {
 
 func (a *API) SetHandler(obj *events.MessageNewObject) {
 	peerID := obj.Message.PeerID
-	userID := strconv.Itoa(obj.Message.FromID)
+	userID := a.getUserID(obj)
 	input := obj.Message.Text
 
 	parts := strings.SplitN(input, "\n", 2)
 	setData := strings.Split(parts[0], ",")
 	if len(setData) != 2 {
 		a.sendMessage(peerID, errInvalidFormat, nil)
+
 		return
 	}
 
@@ -734,6 +671,7 @@ func (a *API) SetHandler(obj *events.MessageNewObject) {
 	reps, errReps := strconv.Atoi(setData[1])
 	if errWeight != nil || errReps != nil {
 		a.sendMessage(peerID, errParseData, nil)
+
 		return
 	}
 	var notes string
@@ -744,6 +682,7 @@ func (a *API) SetHandler(obj *events.MessageNewObject) {
 	err := a.trainingService.AddOrUpdateSet(a.ctx, userID, obj.Message.ID, float32(weight), uint8(reps), notes)
 	if err != nil {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, err), nil)
+
 		return
 	}
 
@@ -755,7 +694,7 @@ func (a *API) StartNewExerciseHandler(obj *events.MessageEventObject) {
 	a.sendEventAnswer(obj.EventID, obj.UserID, obj.PeerID)
 
 	peerID := obj.PeerID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 
 	defer a.clearUserState(userID)
 
@@ -777,13 +716,14 @@ func (a *API) AcceptFinishTrainingHandler(obj *events.MessageEventObject) {
 
 	peerID := obj.PeerID
 	conversationMessageID := obj.ConversationMessageID
-	userID := strconv.Itoa(obj.UserID)
+	userID := a.getUserIDFromCallback(obj)
 
 	defer a.clearUserState(userID)
 
 	session, err := a.trainingService.EndSession(a.ctx, userID)
 	if err != nil {
 		a.sendMessage(peerID, fmt.Sprintf(errGeneral, err), nil)
+
 		return
 	}
 
