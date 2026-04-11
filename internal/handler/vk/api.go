@@ -107,6 +107,7 @@ func (a *API) registerHandlers() {
 		linkAccountCommand:            a.LinkAccountHandler,
 		myAccountsCommand:             a.MyAccountsHandler,
 
+		"Начать": a.StartHandler,
 		"🏋️ Начать тренировку":   a.StartTrainingHandler,
 		"📝 Загрузить тренировку": a.StartUploadTrainingHandler,
 		"📊 История тренировок":   a.StartGetTrainingsHandler,
