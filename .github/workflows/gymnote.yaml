@@ -114,8 +114,8 @@ jobs:
 
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service || true"
 
-          chmod +x ./bin
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
+          chmod +x ./bin/bin
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin/bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
           scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
@@ -182,8 +182,8 @@ jobs:
 
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl stop gymnote.service || true"
 
-          chmod +x ./bin
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
+          chmod +x ./bin/bin
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin/bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
           scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
