@@ -118,8 +118,10 @@ jobs:
           scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin/bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/gymnote.ini /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service && sudo systemctl status gymnote.service"
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/tmp/gymnote.service
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sed -i 's|{{USER}}|$VPS_USER|g; s|{{WORKDIR}}|/home/$VPS_USER/apps/gymnote|g' /tmp/gymnote.service && sudo mv /tmp/gymnote.service /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service"
+          
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl status gymnote.service || sudo journalctl -xeu gymnote.service --no-pager -n 50"
 
   deploy-vps-foreign:
     runs-on: ubuntu-latest
@@ -186,5 +188,7 @@ jobs:
           scp -i deploy_key.pem -o StrictHostKeyChecking=no ./bin/bin $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/bin
           ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "chmod +x /home/$VPS_USER/apps/gymnote/bin"
 
-          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/home/$VPS_USER/apps/gymnote/gymnote.ini
-          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo mv /home/$VPS_USER/apps/gymnote/gymnote.ini /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service && sudo systemctl status gymnote.service"
+          scp -i deploy_key.pem -o StrictHostKeyChecking=no deploy/vps/gymnote.ini $VPS_USER@$VPS_HOST:/tmp/gymnote.service
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sed -i 's|{{USER}}|$VPS_USER|g; s|{{WORKDIR}}|/home/$VPS_USER/apps/gymnote|g' /tmp/gymnote.service && sudo mv /tmp/gymnote.service /etc/systemd/system/gymnote.service && sudo systemctl daemon-reload && sudo systemctl restart gymnote.service"
+          
+          ssh -i deploy_key.pem -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "sudo systemctl status gymnote.service || sudo journalctl -xeu gymnote.service --no-pager -n 50"
