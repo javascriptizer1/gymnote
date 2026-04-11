@@ -15,13 +15,14 @@ import (
 	"gymnote/internal/entity"
 	"gymnote/internal/errs"
 	"gymnote/internal/formatter"
+	"gymnote/internal/handler/common"
 	"gymnote/internal/onerm"
 )
 
 var (
 	maxTgMessageLength     = 4096
-	daysForSetStatistics   = int64(3)
-	daysForExerciseHistory = int64(20)
+	daysForSetStatistics   = common.DaysForSetStatistics
+	daysForExerciseHistory = common.DaysForExerciseHistory
 	pageSize               = 5
 	parseMode              = tgbotapi.ModeMarkdown
 )

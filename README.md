@@ -1,6 +1,8 @@
-# 🏋️‍♂️ Gymnote Telegram Bot
+# 🏋️‍♂️ Gymnote - Telegram + VK Bot
 
-GymNote is a **Telegram bot** designed to help users track their workout progress easily. With simple commands and an intuitive interface, users can log exercises, track progress over time, and stay consistent with their fitness goals.
+GymNote is a workout tracking bot available for **Telegram** and **VK** (ВКонтакте). Designed to help users track their workout progress easily with simple commands and an intuitive interface. Log exercises, track progress over time, and stay consistent with your fitness goals.
+
+> 🆕 **VK Support Added!** Now you can use Gymnote in VK communities. Perfect for users in Russia where Telegram is blocked.
 
 ## Features 🏋️‍♂️
 
@@ -18,7 +20,9 @@ GymNote is a **Telegram bot** designed to help users track their workout progres
 - **Language**: Go (Golang)
 - **Database**: ~~Clickhouse~~ Mongo
 - **Cache**: Redis
-- **Messaging API**: Telegram Bot API
+- **Messaging APIs**: 
+  - Telegram Bot API
+  - VK API (Long Poll)
 - **Hosting**: Deployed on VPS
 
 ## Getting Started 🚀
@@ -59,14 +63,18 @@ make run
 
 ## Commands 📜
 
+Available in both Telegram and VK:
+
 - **/start** - Start the bot
 - **/help** - Show help
 - **/start_training** - Start a new training session
 - **/upload_training** - Upload a new training session
 - **/get_trainings** - View training history
 - **/get_exercise_progression** - View weight progression for an exercise
-- **/create_exercise** - Create a new exercise
+- **/get_exercise_history** - View exercise history
+- **/create_exercise** - Create a new exercise (admin only)
 - **/clear_training** - Reset the current training session
+- **/one_rm** - Calculate one-rep max and percentages
 
 ## In action 🚀
 
@@ -103,6 +111,14 @@ Access your complete training history. Review past workouts, analyze your perfor
 ## Deployment ⚙️
 
 The bot is deployed on a **VPS** using Docker and managed via **systemd** for uptime reliability.
+
+### Multi-Platform Support
+
+- **Telegram & VK**: Both bots can run simultaneously
+- **Shared Database**: All data is stored in a common MongoDB instance
+- **Independent Operation**: Each bot can be enabled/disabled independently via environment variables
+
+This architecture allows easy addition of new platforms (e.g., Discord, Slack) without changing business logic.
 
 ## Contributing 🤝
 

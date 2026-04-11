@@ -14,6 +14,7 @@ type Config struct {
 	DB              DBConfig
 	Redis           CacheConfig
 	Telegram        TelegramConfig
+	VK              VKConfig
 }
 
 type DBConfig struct {
@@ -44,12 +45,22 @@ type CacheConfig struct {
 }
 
 type TelegramConfig struct {
-	BotToken          string `env:"TELEGRAM_BOT_TOKEN" env-required:"true"`
-	GraphicsPath      string `env:"TELEGRAM_BOT_GRAPHICS_PATH" env-required:"true"`
-	GreetingStickerID string `env:"TELEGRAM_BOT_GREETING_STICKER_ID" env-required:"false"`
-	AuthorName        string `env:"TELEGRAM_BOT_AUTHOR_NAME" env-required:"false"`
+	Enabled           bool   `env:"TELEGRAM_ENABLED" env-default:"false"`
+	BotToken          string `env:"TELEGRAM_BOT_TOKEN"`
+	GraphicsPath      string `env:"TELEGRAM_BOT_GRAPHICS_PATH"`
+	GreetingStickerID string `env:"TELEGRAM_BOT_GREETING_STICKER_ID"`
+	AuthorName        string `env:"TELEGRAM_BOT_AUTHOR_NAME"`
 	Timeout           int    `env:"TELEGRAM_BOT_TIMEOUT" env-default:"60"`
 	Debug             bool   `env:"TELEGRAM_BOT_DEBUG" env-default:"false"`
+}
+
+type VKConfig struct {
+	Enabled      bool   `env:"VK_ENABLED" env-default:"false"`
+	AccessToken  string `env:"VK_ACCESS_TOKEN"`
+	GroupID      int    `env:"VK_GROUP_ID"`
+	GraphicsPath string `env:"VK_GRAPHICS_PATH"`
+	AuthorID     int    `env:"VK_AUTHOR_ID"`
+	AuthorName   string `env:"VK_AUTHOR_NAME"`
 }
 
 func MustLoad() *Config {
@@ -57,6 +68,31 @@ func MustLoad() *Config {
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
 		log.Fatalf("No loading env variables: %v", err)
+	}
+
+	if cfg.Telegram.Enabled {
+		if cfg.Telegram.BotToken == "" {
+			log.Fatal("TELEGRAM_BOT_TOKEN is required when ENABLE_TELEGRAM=true")
+		}
+		if cfg.Telegram.GraphicsPath == "" {
+			log.Fatal("TELEGRAM_BOT_GRAPHICS_PATH is required when ENABLE_TELEGRAM=true")
+		}
+	}
+
+	if cfg.VK.Enabled {
+		if cfg.VK.AccessToken == "" {
+			log.Fatal("VK_ACCESS_TOKEN is required when ENABLE_VK=true")
+		}
+		if cfg.VK.GroupID == 0 {
+			log.Fatal("VK_GROUP_ID is required when ENABLE_VK=true")
+		}
+		if cfg.VK.GraphicsPath == "" {
+			log.Fatal("VK_GRAPHICS_PATH is required when ENABLE_VK=true")
+		}
+	}
+
+	if !cfg.Telegram.Enabled && !cfg.VK.Enabled {
+		log.Fatal("At least one bot must be enabled (TELEGRAM_ENABLED or VK_ENABLED)")
 	}
 
 	return &cfg

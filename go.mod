@@ -5,6 +5,7 @@ go 1.23
 toolchain go1.23.5
 
 require (
+	github.com/SevereCloud/vksdk/v2 v2.17.0
 	github.com/go-echarts/go-echarts/v2 v2.5.0
 	github.com/go-echarts/snapshot-chromedp v0.0.5
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
@@ -35,6 +36,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

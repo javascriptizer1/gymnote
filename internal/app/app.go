@@ -12,6 +12,7 @@ import (
 	"gymnote/internal/config"
 	"gymnote/internal/formatter"
 	"gymnote/internal/handler/tg"
+	"gymnote/internal/handler/vk"
 	"gymnote/internal/parser"
 	"gymnote/internal/repository"
 	mongodb "gymnote/internal/repository/mongo"
@@ -25,7 +26,8 @@ type app struct {
 
 	cfg *config.Config
 
-	api   tg.API
+	tgAPI tg.API
+	vkAPI vk.API
 	db    repository.DB
 	cache repository.Cache
 
@@ -98,13 +100,25 @@ func (a *app) initServices() error {
 	a.chart = chart.New()
 	a.service = service.New(a.db, a.cache, a.parser)
 
-	a.api = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.chart, a.service)
+	if a.cfg.Telegram.Enabled {
+		a.tgAPI = *tg.NewAPI(a.ctx, &a.cfg.Telegram, a.formatter, a.chart, a.service)
+	}
+
+	if a.cfg.VK.Enabled {
+		a.vkAPI = *vk.NewAPI(a.ctx, &a.cfg.VK, a.formatter, a.chart, a.service)
+	}
 
 	return nil
 }
 
 func (a *app) Run() error {
-	go a.api.Register()
+	if a.cfg.Telegram.Enabled {
+		go a.tgAPI.Register()
+	}
+
+	if a.cfg.VK.Enabled {
+		go a.vkAPI.Register()
+	}
 
 	log.Println("Server is running...")
 
