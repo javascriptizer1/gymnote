@@ -6,6 +6,7 @@ import (
 	"log"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/events"
@@ -57,8 +58,13 @@ func (a *API) Register() {
 
 	log.Println("VK LongPoll started")
 
-	if err := lp.Run(); err != nil {
-		log.Printf("VK LongPoll error: %v", err)
+	for {
+		if err := lp.Run(); err != nil {
+			log.Printf("VK LongPoll error: %v", err)
+		}
+
+		log.Println("VK LongPoll reconnecting in 5 seconds...")
+		time.Sleep(5 * time.Second)
 	}
 }
 

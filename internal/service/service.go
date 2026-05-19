@@ -139,6 +139,11 @@ func (s *service) CreateExercise(ctx context.Context, name, muscleGroup, equipme
 		log.Printf("Error inserting new exercise '%s': %v\n", name, err)
 		return err
 	}
+
+	if err := s.cache.AddExerciseToCache(ctx, *exercise); err != nil {
+		log.Printf("Error adding exercise '%s' to cache: %v\n", name, err)
+	}
+
 	return nil
 }
 
@@ -163,13 +168,51 @@ func (s *service) GetTrainingSessions(ctx context.Context, userID string, fromDa
 }
 
 func (s *service) GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error) {
-	exercises, err := s.db.GetExercisesByMuscleGroup(ctx, muscleGroup)
+	exercises, err := s.cache.GetExercisesByMuscleGroup(ctx, muscleGroup)
+	if err != nil {
+		log.Printf("Error retrieving exercises from cache for muscle group '%s': %v\n", muscleGroup, err)
+	}
+	if exercises != nil {
+		return exercises, nil
+	}
+
+	exercises, err = s.db.GetExercisesByMuscleGroup(ctx, muscleGroup)
 	if err != nil {
 		log.Printf("Error retrieving exercises by muscle group '%s': %v\n", muscleGroup, err)
 		return nil, err
 	}
 
+	if len(exercises) > 0 {
+		if err := s.cache.SaveExercisesByMuscleGroup(ctx, muscleGroup, exercises); err != nil {
+			log.Printf("Error saving exercises to cache for muscle group '%s': %v\n", muscleGroup, err)
+		}
+	}
+
 	return exercises, nil
+}
+
+func (s *service) GetExerciseByID(ctx context.Context, exerciseID uuid.UUID) (entity.Exercise, error) {
+	exercise, err := s.cache.GetExerciseByID(ctx, exerciseID)
+	if err != nil {
+		log.Printf("Error retrieving exercise from cache by ID '%s': %v\n", exerciseID, err)
+	}
+	if exercise != (entity.Exercise{}) {
+		return exercise, nil
+	}
+
+	exercise, err = s.db.GetExerciseByID(ctx, exerciseID)
+	if err != nil {
+		log.Printf("Error retrieving exercise by ID '%s': %v\n", exerciseID, err)
+		return entity.Exercise{}, err
+	}
+
+	if exercise != (entity.Exercise{}) {
+		if err := s.cache.SaveExerciseByID(ctx, exercise); err != nil {
+			log.Printf("Error saving exercise by ID '%s' to cache: %v\n", exerciseID, err)
+		}
+	}
+
+	return exercise, nil
 }
 
 func (s *service) StartTraining(ctx context.Context, userID string) (*entity.TrainingSession, error) {

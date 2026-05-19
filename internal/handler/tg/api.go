@@ -44,6 +44,7 @@ type TrainingService interface {
 	GetCurrentSession(ctx context.Context, userID string) (*entity.TrainingSession, error)
 	ClearSession(ctx context.Context, userID string) error
 	GetExercisesByMuscleGroup(ctx context.Context, muscleGroup string) ([]entity.Exercise, error)
+	GetExerciseByID(ctx context.Context, exerciseID uuid.UUID) (entity.Exercise, error)
 	UpdateSetFromMessage(ctx context.Context, userID string, messageID int, weight float32, reps uint8, notes string) error
 }
 

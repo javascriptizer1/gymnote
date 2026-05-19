@@ -548,6 +548,13 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 		return
 	}
 
+	exercise, err := a.trainingService.GetExerciseByID(a.ctx, exerciseID)
+	if err != nil {
+		msg := tgbotapi.NewMessage(chatID, errInternal)
+		_, _ = a.bot.Send(msg)
+		return
+	}
+
 	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForSetStatistics)
 	if err != nil {
 		msg := tgbotapi.NewMessage(chatID, errInternal)
@@ -562,9 +569,9 @@ func (a *API) ExerciseHandler(callback *tgbotapi.CallbackQuery) {
 		{backButton},
 	}
 
-	msgText := exerciseText
+	msgText := fmt.Sprintf(exerciseText, exercise.Name())
 	if lastSets != "" {
-		msgText = fmt.Sprintf("%s\n\n%s", exerciseText, fmt.Sprintf(lastSetsText, lastSets))
+		msgText = fmt.Sprintf("%s\n\n%s", msgText, fmt.Sprintf(lastSetsText, lastSets))
 	}
 	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, msgText)
 	editMsg.ParseMode = parseMode

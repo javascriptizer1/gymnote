@@ -567,6 +567,7 @@ func (a *API) MuscleGroupHandler(obj *events.MessageEventObject) {
 
 		return
 	}
+
 	if len(exercises) == 0 {
 		a.sendMessage(peerID, errNoExercises, nil)
 
@@ -634,6 +635,13 @@ func (a *API) ExerciseHandler(obj *events.MessageEventObject) {
 		return
 	}
 
+	exercise, err := a.trainingService.GetExerciseByID(a.ctx, exerciseID)
+	if err != nil {
+		a.sendMessage(peerID, errInternal, nil)
+
+		return
+	}
+
 	sets, err := a.trainingService.GetLastSetsForExercise(a.ctx, userID, exerciseID, daysForSetStatistics)
 	if err != nil {
 		a.sendMessage(peerID, errInternal, nil)
@@ -645,9 +653,9 @@ func (a *API) ExerciseHandler(obj *events.MessageEventObject) {
 
 	keyboard := a.createBackToExercisesKeyboard(muscleGroup, exerciseIDStr)
 
-	msgText := exerciseText
+	msgText := fmt.Sprintf(exerciseText, exercise.Name())
 	if lastSets != "" {
-		msgText = fmt.Sprintf("%s\n\n%s", exerciseText, fmt.Sprintf(lastSetsText, lastSets))
+		msgText = fmt.Sprintf("%s\n\n%s", msgText, fmt.Sprintf(lastSetsText, lastSets))
 	}
 
 	a.setUserState(userID, entity.StateAwaitingSetInput)

@@ -139,3 +139,31 @@ func NewSetRow(set *entity.Set) *SetRow {
 		CreatedAt:  set.CreatedAt(),
 	}
 }
+
+type ExerciseCacheRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	MuscleGroup string    `json:"muscle_group"`
+	Equipment   string    `json:"equipment"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+func (e *ExerciseCacheRow) ToEntity() *entity.Exercise {
+	return entity.NewExercise(entity.WithExerciseRestoreSpec(entity.ExerciseRestoreSpecification{
+		ID:          e.ID,
+		Name:        e.Name,
+		MuscleGroup: e.MuscleGroup,
+		Equipment:   e.Equipment,
+		CreatedAt:   e.CreatedAt,
+	}))
+}
+
+func NewExerciseCacheRow(exercise *entity.Exercise) ExerciseCacheRow {
+	return ExerciseCacheRow{
+		ID:          exercise.ID(),
+		Name:        exercise.Name(),
+		MuscleGroup: exercise.MuscleGroup(),
+		Equipment:   exercise.Equipment(),
+		CreatedAt:   exercise.CreatedAt(),
+	}
+}

@@ -182,6 +182,16 @@ func (a *API) createExerciseKeyboard(exercises []entity.Exercise, muscleGroup st
 	}
 
 	if len(paginationButtons) > 0 {
+		if page < totalPages-1 && len(paginationButtons) == 1 {
+			backButton := object.MessagesKeyboardButton{
+				Action: object.MessagesKeyboardButtonAction{
+					Type:    "callback",
+					Label:   backToMuscleGroupsText,
+					Payload: fmt.Sprintf(`{"button":"%s"}`, backToMuscleGroups),
+				},
+			}
+			paginationButtons = []object.MessagesKeyboardButton{backButton, paginationButtons[0]}
+		}
 		keyboard.Buttons = append(keyboard.Buttons, paginationButtons)
 	}
 
