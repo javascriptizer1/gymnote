@@ -62,11 +62,12 @@ func WithExerciseRowRestoreSpec(e ExerciseRowRestoreSpecification) ExerciseOptio
 }
 
 type TrainingSessionRow struct {
-	ID        string    `bson:"id"`
-	UserID    string    `bson:"user_id"`
-	Date      time.Time `bson:"date"`
-	Notes     string    `bson:"notes"`
-	CreatedAt time.Time `bson:"created_at"`
+	ID               string    `bson:"id"`
+	UserID           string    `bson:"user_id"`
+	Date             time.Time `bson:"date"`
+	Notes            string    `bson:"notes"`
+	CreatedAt        time.Time `bson:"created_at"`
+	DurationMinutes  int64     `bson:"duration_minutes"`
 }
 
 func NewTrainingSessionRow(opts ...TrainingSessionOption) *TrainingSessionRow {
@@ -80,11 +81,12 @@ func NewTrainingSessionRow(opts ...TrainingSessionOption) *TrainingSessionRow {
 }
 
 type TrainingSessionRowRestoreSpecification struct {
-	ID        string
-	UserID    string
-	Date      time.Time
-	Notes     string
-	CreatedAt time.Time
+	ID              string
+	UserID          string
+	Date            time.Time
+	Notes           string
+	CreatedAt       time.Time
+	DurationMinutes int64
 }
 
 func WithTrainingSessionRowRestoreSpec(e TrainingSessionRowRestoreSpecification) TrainingSessionOption {
@@ -94,16 +96,18 @@ func WithTrainingSessionRowRestoreSpec(e TrainingSessionRowRestoreSpecification)
 		o.Date = e.Date
 		o.CreatedAt = e.CreatedAt
 		o.Notes = e.Notes
+		o.DurationMinutes = e.DurationMinutes
 	}
 }
 
 type trainingSessionRowWithLogs struct {
-	ID        string    `bson:"id"`
-	UserID    string    `bson:"user_id"`
-	Date      time.Time `bson:"date"`
-	Notes     string    `bson:"notes,omitempty"`
-	CreatedAt time.Time `bson:"created_at,omitempty"`
-	Logs      []SetRow  `bson:"logs"`
+	ID              string    `bson:"id"`
+	UserID          string    `bson:"user_id"`
+	Date            time.Time `bson:"date"`
+	Notes           string    `bson:"notes,omitempty"`
+	CreatedAt       time.Time `bson:"created_at,omitempty"`
+	DurationMinutes int64     `bson:"duration_minutes,omitempty"`
+	Logs            []SetRow  `bson:"logs"`
 }
 
 type SetRow struct {

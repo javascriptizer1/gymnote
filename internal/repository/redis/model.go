@@ -15,6 +15,7 @@ type TrainingSessionRow struct {
 	Exercises []SessionExerciseRow `json:"exercises"`
 	Notes     string               `json:"notes"`
 	CreatedAt time.Time            `json:"created_at"`
+	Duration  time.Duration        `json:"duration"`
 }
 
 func (ts *TrainingSessionRow) ToEntity() *entity.TrainingSession {
@@ -30,6 +31,7 @@ func (ts *TrainingSessionRow) ToEntity() *entity.TrainingSession {
 			Notes:     ts.Notes,
 			Exercises: exercises,
 			CreatedAt: ts.CreatedAt,
+			Duration:  ts.Duration,
 		},
 	))
 }
@@ -46,6 +48,7 @@ func NewTrainingSessionRow(session *entity.TrainingSession) *TrainingSessionRow 
 		Exercises: exercises,
 		Notes:     session.Notes(),
 		CreatedAt: session.CreatedAt(),
+		Duration:  session.Duration(),
 	}
 }
 

@@ -413,7 +413,7 @@ func (a *API) GetTrainingsHandler(obj *events.MessageNewObject) {
 		return
 	}
 
-	text := a.formatter.FormatTrainingLogs(trainings)
+	text := a.formatter.FormatTrainingLogs(trainings, true)
 	chunks := splitMessage(text, maxVKMessageLength)
 
 	for _, chunk := range chunks {
@@ -736,9 +736,12 @@ func (a *API) AcceptFinishTrainingHandler(obj *events.MessageEventObject) {
 	}
 
 	text := fmt.Sprintf(finishText, session.ExerciseCount(), session.SetCount(), session.TotalVolume())
+	if session.Duration() > 0 {
+		text += fmt.Sprintf("\n• Длительность: %s", formatter.FormatDuration(session.Duration()))
+	}
 	a.editMessage(peerID, conversationMessageID, text, nil)
 
-	details := a.formatter.FormatTrainingLogs([]entity.TrainingSession{*session})
+	details := a.formatter.FormatTrainingLogs([]entity.TrainingSession{*session}, false)
 	if details != "" {
 		chunks := splitMessage(details, maxVKMessageLength)
 		for _, chunk := range chunks {

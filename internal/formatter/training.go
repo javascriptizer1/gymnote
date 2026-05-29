@@ -16,11 +16,15 @@ func New() *formatter {
 	return &formatter{}
 }
 
-func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession) string {
+func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession, showDuration bool) string {
 	var sb strings.Builder
 
 	for _, session := range sessions {
-		sb.WriteString(fmt.Sprintf("%s\n", session.Date().Format(time.DateOnly)))
+		if showDuration && session.Duration() > 0 {
+			fmt.Fprintf(&sb, "%s (%s)\n", session.Date().Format(time.DateOnly), FormatDuration(session.Duration()))
+		} else {
+			fmt.Fprintf(&sb, "%s\n", session.Date().Format(time.DateOnly))
+		}
 
 		for _, ex := range session.Exercises() {
 			setStrings := []string{}
@@ -33,8 +37,9 @@ func (f *formatter) FormatTrainingLogs(sessions []entity.TrainingSession) string
 				setStrings = append(setStrings, setStr)
 			}
 
-			sb.WriteString(fmt.Sprintf("%d. %s - %s\n", ex.Number(), ex.Exercise.Name(), strings.Join(setStrings, "; ")))
+			fmt.Fprintf(&sb, "%d. %s - %s\n", ex.Number(), ex.Exercise.Name(), strings.Join(setStrings, "; "))
 		}
+
 		sb.WriteString("\n\n")
 	}
 
@@ -51,6 +56,21 @@ func FormatWeightFloat(v float64) string {
 
 func formatWeight(weight float32) string {
 	return FormatWeightFloat(float64(weight))
+}
+
+func FormatDuration(d time.Duration) string {
+	if d <= 0 {
+		return "0 мин."
+	}
+
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%d ч. %d мин.", hours, minutes)
+	}
+
+	return fmt.Sprintf("%d мин.", minutes)
 }
 
 func (f *formatter) FormatLastSets(sets []entity.ExerciseProgression) string {

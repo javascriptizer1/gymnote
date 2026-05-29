@@ -15,11 +15,12 @@ import (
 
 func (m *mongodb) InsertTrainingSession(ctx context.Context, req entity.TrainingSession) error {
 	row := NewTrainingSessionRow(WithTrainingSessionRowRestoreSpec(TrainingSessionRowRestoreSpecification{
-		ID:        req.ID().String(),
-		UserID:    req.UserID(),
-		Date:      req.Date(),
-		Notes:     req.Notes(),
-		CreatedAt: req.CreatedAt(),
+		ID:              req.ID().String(),
+		UserID:          req.UserID(),
+		Date:            req.Date(),
+		Notes:           req.Notes(),
+		CreatedAt:       req.CreatedAt(),
+		DurationMinutes: int64(req.Duration().Minutes()),
 	}))
 
 	_, err := m.sessionColl.InsertOne(ctx, row)
@@ -139,6 +140,7 @@ func (m *mongodb) GetTrainingSessions(ctx context.Context, userID string, fromDa
 			Exercises: sessionExercises,
 			Notes:     raw.Notes,
 			CreatedAt: raw.CreatedAt,
+			Duration:  time.Duration(raw.DurationMinutes) * time.Minute,
 		}))
 
 		sessions = append(sessions, session)

@@ -18,6 +18,7 @@ type TrainingSession struct {
 	exercises []SessionExercise
 	notes     string
 	createdAt time.Time
+	duration  time.Duration
 }
 
 func (ts *TrainingSession) ID() uuid.UUID {
@@ -98,6 +99,14 @@ func (ts *TrainingSession) CreatedAt() time.Time {
 	return ts.createdAt
 }
 
+func (ts *TrainingSession) Duration() time.Duration {
+	return ts.duration
+}
+
+func (ts *TrainingSession) SetDuration(d time.Duration) {
+	ts.duration = d
+}
+
 func (ts *TrainingSession) AddExercise(exercise *SessionExercise) {
 	ts.exercises = append(ts.exercises, *exercise)
 }
@@ -140,6 +149,7 @@ type TrainingSessionRestoreSpecification struct {
 	Exercises []SessionExercise
 	Notes     string
 	CreatedAt time.Time
+	Duration  time.Duration
 }
 
 func WithTrainingSessionRestoreSpec(spec TrainingSessionRestoreSpecification) TrainingSessionOption {
@@ -153,5 +163,6 @@ func WithTrainingSessionRestoreSpec(spec TrainingSessionRestoreSpecification) Tr
 		ts.exercises = copiedExercises
 		ts.notes = spec.Notes
 		ts.createdAt = spec.CreatedAt
+		ts.duration = spec.Duration
 	}
 }

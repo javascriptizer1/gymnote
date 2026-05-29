@@ -18,7 +18,7 @@ type CommandHandler func(*tgbotapi.Message)
 type CallbackHandler func(*tgbotapi.CallbackQuery)
 
 type Formatter interface {
-	FormatTrainingLogs(sessions []entity.TrainingSession) string
+	FormatTrainingLogs(sessions []entity.TrainingSession, showDuration bool) string
 	FormatLastSets(sessions []entity.ExerciseProgression) string
 }
 type ChartService interface {

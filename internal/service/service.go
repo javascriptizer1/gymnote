@@ -344,6 +344,8 @@ func (s *service) EndSession(ctx context.Context, userID string) (*entity.Traini
 		return nil, err
 	}
 
+	session.SetDuration(time.Since(session.CreatedAt()))
+
 	if err := s.db.InsertTrainingSession(ctx, *session); err != nil {
 		log.Printf("Error inserting training session: %v\n", err)
 		return nil, fmt.Errorf("failed to insert training session: %w", err)

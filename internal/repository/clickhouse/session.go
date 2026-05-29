@@ -11,8 +11,8 @@ import (
 )
 
 func (c *clickHouse) InsertTrainingSession(ctx context.Context, req entity.TrainingSession) error {
-	query := "INSERT INTO training_sessions (id, user_id, date, total_volume, exercise_count, notes) VALUES (?, ?, ?, ?, ?, ?)"
-	if err := c.conn.Exec(ctx, query, req.ID(), req.UserID(), req.Date(), req.TotalVolume(), req.ExerciseCount(), req.Notes()); err != nil {
+	query := "INSERT INTO training_sessions (id, user_id, date, total_volume, exercise_count, notes, duration_minutes) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	if err := c.conn.Exec(ctx, query, req.ID(), req.UserID(), req.Date(), req.TotalVolume(), req.ExerciseCount(), req.Notes(), int64(req.Duration().Minutes())); err != nil {
 		return fmt.Errorf("failed to insert training session: %w", err)
 	}
 

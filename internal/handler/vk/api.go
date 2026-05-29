@@ -19,7 +19,7 @@ type CommandHandler func(*events.MessageNewObject)
 type CallbackHandler func(*events.MessageEventObject)
 
 type Formatter interface {
-	FormatTrainingLogs(sessions []entity.TrainingSession) string
+	FormatTrainingLogs(sessions []entity.TrainingSession, showDuration bool) string
 	FormatLastSets(sessions []entity.ExerciseProgression) string
 }
 

@@ -294,7 +294,7 @@ func (a *API) GetTrainingsHandler(message *tgbotapi.Message) {
 		return
 	}
 
-	text := a.formatter.FormatTrainingLogs(trainings)
+	text := a.formatter.FormatTrainingLogs(trainings, true)
 	chunks := splitMessage(text, maxTgMessageLength)
 
 	for _, chunk := range chunks {
@@ -682,12 +682,15 @@ func (a *API) AcceptFinishTrainingHandler(callback *tgbotapi.CallbackQuery) {
 	}
 
 	text := fmt.Sprintf(finishText, session.ExerciseCount(), session.SetCount(), session.TotalVolume())
+	if session.Duration() > 0 {
+		text += fmt.Sprintf("\n• Длительность: %s", formatter.FormatDuration(session.Duration()))
+	}
 	editMsg := tgbotapi.NewEditMessageText(chatID, messageID, text)
 	editMsg.ParseMode = parseMode
 
 	_, _ = a.bot.Send(editMsg)
 
-	details := a.formatter.FormatTrainingLogs([]entity.TrainingSession{*session})
+	details := a.formatter.FormatTrainingLogs([]entity.TrainingSession{*session}, false)
 	if details != "" {
 		chunks := splitMessage(details, maxTgMessageLength)
 		for _, chunk := range chunks {
